@@ -54,6 +54,24 @@ export const registerAsync = createAsyncThunk(
   }
 )
 
+// Cross-server OAuth exchange (see /oauth/callback, client.oauth.exchange).
+// Unlike loginAsync, serverUrl never changes here — the browser stays on
+// this origin the whole time; only the resulting session belongs to a
+// foreign identity now recognized by our own backend.
+export const oauthExchangeAsync = createAsyncThunk(
+  'auth/oauthExchange',
+  async ({ code, homeDomain }, { getState, rejectWithValue }) => {
+    try {
+      const { serverUrl } = getState().auth
+      const client = getClient(serverUrl)
+      const result = await client.oauth.exchange({ code, homeDomain })
+      return { ...result, serverUrl }
+    } catch (err) {
+      return rejectWithValue(err.message || 'OAuth exchange failed')
+    }
+  }
+)
+
 export const logoutAsync = createAsyncThunk(
   'auth/logout',
   async (_, { getState }) => {
@@ -156,6 +174,23 @@ const authSlice = createSlice({
         state.sessionChecked = true
       })
       .addCase(registerAsync.rejected, (state, action) => {
+        state.status = 'failed'
+        state.error = action.payload
+      })
+
+      // oauthExchange
+      .addCase(oauthExchangeAsync.pending, (state) => {
+        state.status = 'loading'
+        state.error = null
+      })
+      .addCase(oauthExchangeAsync.fulfilled, (state, action) => {
+        state.status = 'succeeded'
+        state.user = action.payload.user
+        state.token = action.payload.token
+        state.serverUrl = action.payload.serverUrl
+        state.sessionChecked = true
+      })
+      .addCase(oauthExchangeAsync.rejected, (state, action) => {
         state.status = 'failed'
         state.error = action.payload
       })

@@ -5,6 +5,8 @@ import AdminLayout from '../components/layout/AdminLayout'
 import LoginPage from '../features/auth/LoginPage'
 import RegisterPage from '../features/auth/RegisterPage'
 import InviteRedirect from '../features/auth/InviteRedirect'
+import OAuthAuthorizePage from '../features/auth/OAuthAuthorizePage'
+import OAuthCallbackPage from '../features/auth/OAuthCallbackPage'
 
 // Public pages (accessible with or without auth)
 import HomePage from '../pages/HomePage'
@@ -62,6 +64,8 @@ const router = createBrowserRouter([
   // Auth pages — standalone, no layout
   { path: '/login',                element: <LoginPage /> },
   { path: '/register',             element: <RegisterPage /> },
+  { path: '/oauth/authorize',      element: <OAuthAuthorizePage /> },
+  { path: '/oauth/callback',       element: <OAuthCallbackPage /> },
   { path: '/invite/:code',         element: <InviteRedirect /> },
   { path: '/forgot-password',      element: <ForgotPasswordPage /> },
   { path: '/reset-password',       element: <ResetPasswordPage /> },

@@ -8,6 +8,33 @@ import AuthSplash from '../../components/auth/AuthSplash'
 import { useIsDesktop } from '../../hooks/useIsDesktop'
 
 const FIXED_SERVER = import.meta.env.VITE_SERVER_URL || window.KOWLOON_CONFIG?.apiUrl || window.location.origin
+const OWN_DOMAIN = (() => {
+  try { return new URL(FIXED_SERVER).hostname } catch { return window.location.hostname }
+})()
+
+// Parses "@user@domain", "user@domain", or a bare "user" (this site).
+function parseKowloonId(raw) {
+  const s = String(raw || '').trim().replace(/^@/, '')
+  const parts = s.split('@')
+  if (parts.length === 2 && parts[0] && parts[1]) {
+    return { username: parts[0], domain: parts[1].toLowerCase() }
+  }
+  return { username: s, domain: null }
+}
+
+// Begins the cross-server OAuth flow: top-level navigation to the home
+// server's own /oauth/authorize consent page (a frontend route there, not a
+// direct API call) — the user only ever types their password on their own
+// home server's real login page. `state` guards against login CSRF: an
+// attacker-initiated code being fed back into this browser's callback.
+function redirectToHomeServer(domain) {
+  const state = crypto.randomUUID()
+  sessionStorage.setItem('kowloon_oauth_state', state)
+  sessionStorage.setItem('kowloon_oauth_home', domain)
+  const redirectUri = `https://${OWN_DOMAIN}/oauth/callback`
+  const url = `https://${domain}/oauth/authorize?client_domain=${encodeURIComponent(OWN_DOMAIN)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`
+  window.location.href = url
+}
 
 function Field({ label, hint, children }) {
   return (
@@ -47,16 +74,25 @@ export default function LoginPage() {
     ? 'Your session expired. Please sign in again.'
     : null
 
+  const returnTo = searchParams.get('return_to')
+
   useEffect(() => { dispatch(clearError()) }, [dispatch])
   useEffect(() => {
-    if (sessionChecked && user) navigate('/', { replace: true })
-  }, [sessionChecked, user, navigate])
+    if (sessionChecked && user) {
+      navigate(returnTo ? decodeURIComponent(returnTo) : '/', { replace: true })
+    }
+  }, [sessionChecked, user, navigate, returnTo])
 
   const isLoading = status === 'loading'
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    dispatch(loginAsync({ serverUrl: serverUrl.trim(), username: username.trim(), password }))
+    const { username: parsedUsername, domain } = parseKowloonId(username)
+    if (domain && domain !== OWN_DOMAIN) {
+      redirectToHomeServer(domain)
+      return
+    }
+    dispatch(loginAsync({ serverUrl: serverUrl.trim(), username: parsedUsername, password }))
   }
 
   if (!sessionChecked) {
@@ -176,12 +212,15 @@ export default function LoginPage() {
               </Field>
             )}
 
-            <Field label={t('auth.username', { defaultValue: 'Username' })}>
+            <Field
+              label={t('auth.username', { defaultValue: 'Kowloon ID' })}
+              hint={t('auth.usernameHint', { defaultValue: 'yours, or @you@another-server' })}
+            >
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder={t('auth.usernamePlaceholder', { defaultValue: 'yourhandle' })}
+                placeholder={t('auth.usernamePlaceholder', { defaultValue: 'yourhandle or @yourhandle@server.example' })}
                 required
                 autoComplete="username"
                 autoFocus={!!FIXED_SERVER}
