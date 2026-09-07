@@ -246,6 +246,13 @@ export default function ProfilePage() {
   const joinedGroups = useJoinedGroups()
 
   const user = authUser ?? MOCK_USER
+  // Cross-server visiting identity (see features/auth/authSlice.js's
+  // oauthExchangeAsync) — the server already refuses profile-edit/upload
+  // activities for a visiting session (routes/outbox/post.js's scope
+  // check), but presenting a fully editable form that silently fails is
+  // bad UX, so skip rendering it at all.
+  const isVisiting = !!authUser?.visiting
+  const homeDomain = isVisiting ? (user.id || '').split('@').pop() : null
 
   // Canonical "server" audience value ("@<own-domain>") and admin status, used
   // by the manifest-driven preferences below.
@@ -394,6 +401,32 @@ export default function ProfilePage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  if (isVisiting) {
+    return (
+      <div className="flex flex-col gap-8">
+        <div className="border-b-2 border-base-300 pb-4">
+          <h1 className="font-display text-5xl tracking-wide leading-none">
+            {t('profile.title', { defaultValue: 'Profile & Settings' })}
+          </h1>
+        </div>
+        <div className="px-4 py-4 border-l-4 border-warning bg-warning/5 max-w-xl">
+          <p className="font-ui text-xs uppercase tracking-widest text-warning">
+            {t('profile.visitingNotice', {
+              defaultValue: `Profile editing isn't available while visiting from ${homeDomain}.`,
+            })}
+          </p>
+          <p className="font-reading text-sm text-base-content/70 mt-2">
+            {t('profile.visitingNoticeDetail', { defaultValue: 'Sign in directly on ' })}
+            <a href={`https://${homeDomain}/profile`} className="text-primary hover:opacity-70 transition-opacity">
+              {homeDomain}
+            </a>
+            {t('profile.visitingNoticeDetailEnd', { defaultValue: ' to edit your profile there.' })}
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (
