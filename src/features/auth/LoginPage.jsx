@@ -85,6 +85,13 @@ export default function LoginPage() {
 
   const isLoading = status === 'loading'
 
+  // Recomputed on every keystroke so the form can drop the password field
+  // (and its `required` attribute) the moment a foreign domain is typed —
+  // it's never needed here, since a foreign ID redirects to its own home
+  // server's login page instead of collecting a password on this page.
+  const { domain: foreignDomain } = parseKowloonId(username)
+  const isForeign = !!(foreignDomain && foreignDomain !== OWN_DOMAIN)
+
   const handleSubmit = (e) => {
     e.preventDefault()
     const { username: parsedUsername, domain } = parseKowloonId(username)
@@ -228,35 +235,45 @@ export default function LoginPage() {
               />
             </Field>
 
-            <div className="flex flex-col gap-1">
-              <div className="flex items-baseline justify-between">
-                <label className="font-ui text-xs uppercase tracking-widest text-base-content/50">
-                  {t('auth.password', { defaultValue: 'Password' })}
-                </label>
-                <Link
-                  to="/forgot-password"
-                  tabIndex={-1}
-                  className="font-ui text-xs uppercase tracking-widest text-base-content/30 hover:text-primary transition-colors"
-                >
-                  {t('auth.forgotPassword', { defaultValue: 'Forgot?' })}
-                </Link>
+            {!isForeign && (
+              <div className="flex flex-col gap-1">
+                <div className="flex items-baseline justify-between">
+                  <label className="font-ui text-xs uppercase tracking-widest text-base-content/50">
+                    {t('auth.password', { defaultValue: 'Password' })}
+                  </label>
+                  <Link
+                    to="/forgot-password"
+                    tabIndex={-1}
+                    className="font-ui text-xs uppercase tracking-widest text-base-content/30 hover:text-primary transition-colors"
+                  >
+                    {t('auth.forgotPassword', { defaultValue: 'Forgot?' })}
+                  </Link>
+                </div>
+                <PasswordInput
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  autoComplete="current-password"
+                  className="w-full px-0 py-2 bg-transparent border-b-2 border-base-300 focus:border-primary outline-none font-ui text-sm tracking-wide text-base-content placeholder:text-base-content/25 transition-colors"
+                />
               </div>
-              <PasswordInput
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                autoComplete="current-password"
-                className="w-full px-0 py-2 bg-transparent border-b-2 border-base-300 focus:border-primary outline-none font-ui text-sm tracking-wide text-base-content placeholder:text-base-content/25 transition-colors"
-              />
-            </div>
+            )}
+
+            {isForeign && (
+              <p className="font-ui text-xs uppercase tracking-widest text-base-content/40 -mt-2">
+                {t('auth.foreignHint', { defaultValue: `You'll sign in on ${foreignDomain} — your password stays there.` })}
+              </p>
+            )}
 
             <button
               type="submit"
               disabled={isLoading}
               className="mt-3 w-full py-3 bg-primary text-primary-content font-ui text-xs uppercase tracking-widest hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
             >
-              {isLoading
+              {isForeign
+                ? t('auth.continueTo', { defaultValue: `Continue to ${foreignDomain}` })
+                : isLoading
                 ? t('auth.signingIn', { defaultValue: 'Signing in…' })
                 : t('auth.login', { defaultValue: 'Sign In' })
               }
