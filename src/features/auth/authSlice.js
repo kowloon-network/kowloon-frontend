@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import { getClient, clearClient } from '../../lib/client'
+import { getClient, clearClient, resolveServerUrl } from '../../lib/client'
 
 const SERVER_URL_KEY = 'kowloon_server_url'
 
@@ -57,14 +57,22 @@ export const registerAsync = createAsyncThunk(
 // Cross-server OAuth exchange (see /oauth/callback, client.oauth.exchange).
 // Unlike loginAsync, serverUrl never changes here — the browser stays on
 // this origin the whole time; only the resulting session belongs to a
-// foreign identity now recognized by our own backend.
+// foreign identity now recognized by our own backend. Still has to resolve
+// AND persist serverUrl itself (matching loginAsync/registerAsync) rather
+// than reading it from existing state: on a browser that's never logged
+// into this origin before, state.auth.serverUrl starts out null (nothing
+// in localStorage yet, no VITE_SERVER_URL baked in), and restoreSessionAsync
+// bails out immediately whenever serverUrl is falsy — so without this, the
+// visiting session token would be stored fine but silently fail to survive
+// a refresh, since restoreSessionAsync would never even attempt to read it.
 export const oauthExchangeAsync = createAsyncThunk(
   'auth/oauthExchange',
-  async ({ code, homeDomain }, { getState, rejectWithValue }) => {
+  async ({ code, homeDomain }, { rejectWithValue }) => {
     try {
-      const { serverUrl } = getState().auth
+      const serverUrl = resolveServerUrl()
       const client = getClient(serverUrl)
       const result = await client.oauth.exchange({ code, homeDomain })
+      localStorage.setItem(SERVER_URL_KEY, serverUrl)
       return { ...result, serverUrl }
     } catch (err) {
       return rejectWithValue(err.message || 'OAuth exchange failed')
