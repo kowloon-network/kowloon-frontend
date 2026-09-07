@@ -1,7 +1,7 @@
 // ProfilePage — edit current user's profile and preferences.
 // Sections: Avatar, Identity, Bio/Links, Preferences, Account (read-only).
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { Upload, Plus, X, Check } from 'lucide-react'
@@ -63,6 +63,79 @@ function Field({ label, hint, children }) {
       {children}
       {hint && <p className="font-reading text-xs text-base-content/40 italic">{hint}</p>}
     </div>
+  )
+}
+
+// Foreign servers currently able to act as this user via a cross-server
+// OAuth grant (see features/auth/authSlice.js's oauthExchangeAsync — this is
+// the OTHER side of that: servers THIS account has granted access to, not
+// servers this account is visiting). Revoking cuts a domain off immediately
+// (client.oauth.revoke -> server checks the block/grant state on every
+// request, not just at grant time — see kowloon repo's routes/outbox/post.js).
+function ConnectedServersSection({ client, t }) {
+  const [grants, setGrants] = useState(null) // null = loading
+  const [busyDomain, setBusyDomain] = useState(null)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    client?.oauth?.listGrants?.()
+      .then((list) => { if (!cancelled) setGrants(list) })
+      .catch(() => { if (!cancelled) setGrants([]) })
+    return () => { cancelled = true }
+  }, [client])
+
+  if (grants !== null && grants.length === 0) return null
+
+  const handleRevoke = async (clientDomain) => {
+    setBusyDomain(clientDomain)
+    setError(null)
+    try {
+      await client.oauth.revoke({ clientDomain })
+      setGrants((prev) => prev.filter((g) => g.clientDomain !== clientDomain))
+    } catch (err) {
+      setError(err.message || 'Failed to revoke')
+    } finally {
+      setBusyDomain(null)
+    }
+  }
+
+  return (
+    <Section title={t('profile.connectedServers', { defaultValue: 'Connected Servers' })}>
+      <p className="font-reading text-xs text-base-content/40 italic -mt-2">
+        {t('profile.connectedServersHint', {
+          defaultValue: 'Servers you\'ve signed into with this identity and can currently act as you.',
+        })}
+      </p>
+      {error && (
+        <span role="alert" className="font-ui text-xs uppercase tracking-widest text-error">{error}</span>
+      )}
+      {grants === null ? (
+        <p className="font-ui text-xs uppercase tracking-widest text-base-content/40 animate-pulse">
+          {t('common.loading', { defaultValue: 'Loading…' })}
+        </p>
+      ) : (
+        <div className="flex flex-col divide-y divide-base-300 border-2 border-base-300">
+          {grants.map((g) => (
+            <div key={g.clientDomain} className="flex items-center justify-between px-4 py-3">
+              <span className="font-ui text-sm">{g.clientDomain}</span>
+              <button
+                type="button"
+                onClick={() => handleRevoke(g.clientDomain)}
+                disabled={busyDomain === g.clientDomain}
+                className="flex items-center gap-1.5 font-ui text-xs uppercase tracking-widest text-error hover:opacity-70 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+              >
+                <X size={13} />
+                {busyDomain === g.clientDomain
+                  ? t('common.working', { defaultValue: 'Working…' })
+                  : t('profile.revoke', { defaultValue: 'Revoke' })
+                }
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Section>
   )
 }
 
@@ -712,6 +785,8 @@ export default function ProfilePage() {
           <TextInput value={serverUrl ?? '(local)'} readOnly />
         </Field>
       </Section>
+
+      <ConnectedServersSection client={client} t={t} />
 
       {/* Save */}
       <div className="flex items-center justify-end gap-4 pt-4 border-t-2 border-base-300">
