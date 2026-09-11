@@ -66,6 +66,106 @@ function Field({ label, hint, children }) {
   )
 }
 
+// Change your own password. Separate from the Save button at the bottom of
+// the page: this posts straight to /auth/change-password rather than going
+// through the profile Update activity, since the server has to verify the
+// current password before it will touch the stored hash.
+function ChangePasswordSection({ client, t }) {
+  const [current, setCurrent] = useState('')
+  const [next, setNext] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const [done, setDone] = useState(false)
+
+  const tooShort = next.length > 0 && next.length < 8
+  const mismatch = confirm.length > 0 && next !== confirm
+  const canSubmit =
+    current.length > 0 && next.length >= 8 && next === confirm && !busy
+
+  const handleSubmit = async () => {
+    setBusy(true)
+    setError(null)
+    setDone(false)
+    try {
+      await client.auth.changePassword({
+        currentPassword: current,
+        newPassword: next,
+      })
+      setCurrent('')
+      setNext('')
+      setConfirm('')
+      setDone(true)
+    } catch (err) {
+      setError(err?.message || 'Could not change password')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Section title={t('profile.password', { defaultValue: 'Password' })}>
+      <p className="font-reading text-xs text-base-content/40 italic -mt-2">
+        {t('profile.passwordHint', {
+          defaultValue:
+            'Changing your password here keeps you signed in on this device. Other devices stay signed in until their session expires.',
+        })}
+      </p>
+
+      <Field label={t('profile.currentPassword', { defaultValue: 'Current password' })}>
+        <TextInput type="password" value={current} onChange={setCurrent} />
+      </Field>
+
+      <Field
+        label={t('profile.newPassword', { defaultValue: 'New password' })}
+        hint={
+          tooShort
+            ? t('profile.passwordTooShort', { defaultValue: 'At least 8 characters.' })
+            : undefined
+        }
+      >
+        <TextInput type="password" value={next} onChange={setNext} />
+      </Field>
+
+      <Field
+        label={t('profile.confirmPassword', { defaultValue: 'Confirm new password' })}
+        hint={
+          mismatch
+            ? t('profile.passwordMismatch', { defaultValue: "These don't match." })
+            : undefined
+        }
+      >
+        <TextInput type="password" value={confirm} onChange={setConfirm} />
+      </Field>
+
+      <div className="flex items-center justify-end gap-4">
+        {error && (
+          <span role="alert" className="font-ui text-xs uppercase tracking-widest text-error">
+            {error}
+          </span>
+        )}
+        {done && (
+          <span className="flex items-center gap-1.5 font-ui text-xs uppercase tracking-widest text-success">
+            <Check size={13} />
+            {t('profile.passwordChanged', { defaultValue: 'Password changed' })}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!canSubmit}
+          className="px-6 py-2.5 bg-primary text-primary-content font-ui text-xs uppercase tracking-widest hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+        >
+          {busy
+            ? t('profile.changingPassword', { defaultValue: 'Changing…' })
+            : t('profile.changePassword', { defaultValue: 'Change password' })
+          }
+        </button>
+      </div>
+    </Section>
+  )
+}
+
 // Foreign servers currently able to act as this user via a cross-server
 // OAuth grant (see features/auth/authSlice.js's oauthExchangeAsync — this is
 // the OTHER side of that: servers THIS account has granted access to, not
@@ -785,6 +885,8 @@ export default function ProfilePage() {
           <TextInput value={serverUrl ?? '(local)'} readOnly />
         </Field>
       </Section>
+
+      <ChangePasswordSection client={client} t={t} />
 
       <ConnectedServersSection client={client} t={t} />
 
