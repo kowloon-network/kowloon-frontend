@@ -28,7 +28,7 @@ export default function RegisterPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { user, sessionChecked, status, error } = useSelector((state) => state.auth)
-  const { registrationIsOpen, settings: serverSettings } = useSelector((state) => state.server)
+  const { settings: serverSettings } = useSelector((state) => state.server)
   const { t } = useTranslation()
   // Two AuthSplash spots (desktop panel / mobile banner) are mutually
   // exclusive by viewport — only mount the one that's actually visible, so
@@ -175,10 +175,14 @@ export default function RegisterPage() {
             </p>
           </div>
 
-          {registrationIsOpen === false && (
+          {/* Kowloon has no server-wide open-signup switch — every server
+              requires an invite. This reacts to whether the code is actually
+              filled in yet (usually because it prefilled from ?invite=), not
+              to any setting, so it disappears the moment the field is. */}
+          {!inviteCode && (
             <div className="mb-6 px-4 py-3 border-l-4 border-warning bg-warning/5">
               <p className="font-ui text-xs uppercase tracking-widest text-warning/80">
-                {t('auth.inviteOnly', { defaultValue: 'This server requires an invite to register.' })}
+                {t('auth.inviteRequired', { defaultValue: "You'll need an invite code to register — ask whoever invited you, or your server's admin." })}
               </p>
             </div>
           )}
@@ -190,6 +194,32 @@ export default function RegisterPage() {
           )}
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            {/* Always required, always first — every Kowloon server requires
+                an invite to register, so this is the one field that decides
+                whether the rest of the form is even usable yet. Autofocus
+                lands here specifically when it ISN'T prefilled, so a visitor
+                who followed a bare link (not an invite link) sees the
+                cursor sitting in the one field they can't skip, rather than
+                discovering that on submit. */}
+            <Field
+              label={t('auth.inviteCode', { defaultValue: 'Invite Code' })}
+              hint={inviteCode
+                ? t('auth.inviteCodeFromLink', { defaultValue: 'from your invite link' })
+                : t('common.required', { defaultValue: 'required' })
+              }
+            >
+              <input
+                type="text"
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value)}
+                placeholder={t('auth.inviteCodePlaceholder', { defaultValue: 'XXXX-XXXX' })}
+                required
+                autoComplete="off"
+                autoFocus={!inviteCode}
+                className={`${inputCls} ${!inviteCode ? 'border-warning' : ''}`}
+              />
+            </Field>
+
             {!FIXED_SERVER && (
               <Field label={t('auth.serverUrl', { defaultValue: 'Server URL' })}>
                 <input
@@ -212,7 +242,7 @@ export default function RegisterPage() {
                 placeholder={t('auth.usernamePlaceholder', { defaultValue: 'yourhandle' })}
                 required
                 autoComplete="username"
-                autoFocus={!!FIXED_SERVER}
+                autoFocus={!!FIXED_SERVER && !!inviteCode}
                 pattern="[a-z0-9_]{2,32}"
                 title={t('auth.usernamePattern', { defaultValue: 'Lowercase letters, numbers, and underscores only (no spaces or capitals)' })}
                 className={inputCls}
@@ -259,24 +289,6 @@ export default function RegisterPage() {
                 placeholder="••••••••"
                 required
                 autoComplete="new-password"
-                className={inputCls}
-              />
-            </Field>
-
-            <Field
-              label={t('auth.inviteCode', { defaultValue: 'Invite Code' })}
-              hint={registrationIsOpen === false
-                ? t('common.required', { defaultValue: 'required' })
-                : t('auth.inviteCodeNote', { defaultValue: 'if required' })
-              }
-            >
-              <input
-                type="text"
-                value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value)}
-                placeholder={t('auth.inviteCodePlaceholder', { defaultValue: 'XXXX-XXXX' })}
-                required={registrationIsOpen === false}
-                autoComplete="off"
                 className={inputCls}
               />
             </Field>

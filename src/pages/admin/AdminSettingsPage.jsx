@@ -14,7 +14,7 @@ import sizedUrl from '../../lib/sizedUrl'
 
 // ── Tab config ─────────────────────────────────────────────────────────────
 
-const VALID_TAB_IDS = new Set(['general','appearance','registration','email','moderation','content','media','integrations','maintenance'])
+const VALID_TAB_IDS = new Set(['general','appearance','users','email','moderation','content','media','integrations','maintenance'])
 
 function useHashTab(defaultTab) {
   const read = () => {
@@ -33,7 +33,7 @@ function useHashTab(defaultTab) {
 const TABS = [
   { id: 'general',      label: 'General' },
   { id: 'appearance',   label: 'Appearance' },
-  { id: 'registration', label: 'Registration' },
+  { id: 'users',        label: 'Users' },
   { id: 'email',        label: 'Email' },
   { id: 'moderation',   label: 'Moderation' },
   { id: 'content',      label: 'Content' },
@@ -816,12 +816,15 @@ function AppearanceSection({ settings, client, onSaved }) {
   )
 }
 
-function RegistrationSection({ settings, client, onSaved }) {
+// Registration itself has no setting to control anymore — every server
+// requires an invite (individual, or an admin-issued "open" link, which can
+// be unlimited-redemption for low-friction signup). Manage that under
+// Invites, not here. This tab is left for the one other per-user default
+// that lived alongside it for UI-organization reasons, not a shared group.
+function UsersSection({ settings, client, onSaved }) {
   const get = (name) => settings.find((s) => s.name === name)
-  const regSetting      = get('registrationIsOpen')
   const pronounsSetting = get('defaultPronouns')
 
-  const [isOpen, setIsOpen] = useState(Boolean(regSetting?.value))
   const [pronouns, setPronouns] = useState({
     subject:   pronounsSetting?.value?.subject   ?? 'they',
     object:    pronounsSetting?.value?.object    ?? 'them',
@@ -833,17 +836,14 @@ function RegistrationSection({ settings, client, onSaved }) {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
 
-  const initialOpen     = Boolean(regSetting?.value)
   const initialPronouns = { ...pronounsSetting?.value }
-  const dirty = isOpen !== initialOpen || JSON.stringify(pronouns) !== JSON.stringify(initialPronouns)
+  const dirty = JSON.stringify(pronouns) !== JSON.stringify(initialPronouns)
 
   const setP = (k, v) => { setPronouns((p) => ({ ...p, [k]: v })); setSaved(false) }
 
   const save = async () => {
     setSaving(true); setError(null); setSaved(false)
     try {
-      await client.admin.updateSetting({ settingId: 'registrationIsOpen', value: isOpen })
-      onSaved('registrationIsOpen', isOpen)
       await client.admin.updateSetting({ settingId: 'defaultPronouns', value: pronouns })
       onSaved('defaultPronouns', pronouns)
       setSaved(true)
@@ -864,17 +864,8 @@ function RegistrationSection({ settings, client, onSaved }) {
 
   return (
     <div>
-      <SectionHeading title="Registration" description="Control who can create accounts on this server." />
-      <FieldRow label="Open registration"
-        description="When enabled, anyone can sign up without an invite code. Disable to make this invite-only.">
-        <Toggle
-          checked={isOpen}
-          onChange={(v) => { setIsOpen(v); setSaved(false) }}
-          disabled={saving}
-          label={isOpen ? 'Anyone can register' : 'Invite-only'}
-        />
-      </FieldRow>
-      <div className="mt-6">
+      <SectionHeading title="Users" description="Defaults new accounts start with. To control who can sign up, use Invites." />
+      <div>
         <h3 className="font-display text-xl tracking-wide mb-1">Default pronouns</h3>
         <p className="font-ui text-sm text-base-content/50 mb-4">Pre-filled in new user profiles. Users can change them at any time.</p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-0">
@@ -1616,7 +1607,7 @@ function MaintenanceSection({ settings, client, onSaved }) {
 const SECTION_MAP = {
   general:      GeneralSection,
   appearance:   AppearanceSection,
-  registration: RegistrationSection,
+  users: UsersSection,
   email:        EmailSection,
   moderation:   ModerationSection,
   content:      ContentSection,

@@ -23,7 +23,6 @@ const serverSlice = createSlice({
     description: null,
     icon: null,
     image: null,
-    registrationIsOpen: false,
     settings: {},
     status: 'idle',
   },
@@ -40,7 +39,6 @@ const serverSlice = createSlice({
         state.description     = action.payload.description     ?? null
         state.icon            = action.payload.icon            ?? null
         state.image           = action.payload.image           ?? null
-        state.registrationIsOpen = !!action.payload.registrationIsOpen
         state.settings        = action.payload.settings        ?? {}
       })
       .addCase(fetchServerInfoAsync.rejected, (state) => {
