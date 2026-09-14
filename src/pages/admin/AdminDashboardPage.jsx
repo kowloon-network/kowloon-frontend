@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, BookOpen, Bookmark, Mail } from 'lucide-react'
+import { Plus, BookOpen, Bookmark, Mail, Compass, ExternalLink } from 'lucide-react'
 import { useClient } from '../../hooks/useClient'
 import Spinner from '../../components/ui/Spinner'
 
@@ -27,6 +27,35 @@ function QuickLinks() {
         </Link>
       ))}
     </div>
+  )
+}
+
+// Sits directly under the quick links, above the stats. A new admin's first
+// view of this page is a wall of numbers that assumes they already know what
+// the job is; this is the one thing on the dashboard aimed at someone who
+// doesn't yet. Opens in a new tab so it never navigates them out of the
+// panel they're learning.
+function GuideBanner() {
+  return (
+    <a
+      href="https://kowloon.network/docs/admin/quick-start/"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group flex items-center gap-4 border-2 border-primary bg-primary/5 hover:bg-primary/10 px-5 py-4 mb-8 transition-colors"
+    >
+      <Compass size={22} className="text-primary shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="font-display text-xl tracking-wide">New to running a server?</p>
+        <p className="font-reading text-sm text-base-content/60">
+          A short guide to everything on this panel -- appearance, invites, rules,
+          pages and moderation.
+        </p>
+      </div>
+      <span className="flex items-center gap-1.5 font-ui text-xs uppercase tracking-widest text-primary shrink-0">
+        Read the guide
+        <ExternalLink size={13} className="group-hover:translate-x-0.5 transition-transform" />
+      </span>
+    </a>
   )
 }
 
@@ -109,6 +138,8 @@ export default function AdminDashboardPage() {
       <h1 className="font-display text-5xl tracking-wide mb-8">Dashboard</h1>
 
       <QuickLinks />
+
+      <GuideBanner />
 
       <SectionTitle>Activity</SectionTitle>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
