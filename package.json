@@ -10,9 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "storybook": "storybook dev -p 6006 --host 0.0.0.0 --no-open",
-    "build-storybook": "storybook build"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -47,28 +45,17 @@
     "tiptap-markdown": "^0.9.0"
   },
   "devDependencies": {
-    "@chromatic-com/storybook": "latest",
     "@eslint/js": "^9.39.1",
-    "@storybook/addon-a11y": "^10.5.7",
-    "@storybook/addon-docs": "^10.5.7",
-    "@storybook/addon-mcp": "latest",
-    "@storybook/addon-vitest": "^10.5.7",
-    "@storybook/react-vite": "^10.5.7",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
-    "@vitest/browser-playwright": "^4.1.11",
-    "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
-    "eslint-plugin-storybook": "^10.5.7",
     "globals": "^16.5.0",
     "playwright": "latest",
     "prop-types": "latest",
-    "storybook": "^10.5.7",
     "vite": "^7.3.1",
-    "vite-plugin-svgr": "^4.5.0",
-    "vitest": "^4.1.11"
+    "vite-plugin-svgr": "^4.5.0"
   }
 }
