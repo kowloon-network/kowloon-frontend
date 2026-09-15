@@ -6,7 +6,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
-import { Search, X, Loader, Globe } from 'lucide-react'
+import { Search, X, Loader, Globe, ArrowRight, FileText, Users2, BookOpen } from 'lucide-react'
+import { parseKowloonId, NAVIGABLE_TYPES } from '@kowloon/client'
 import { useClient } from '../hooks/useClient'
 import { toast } from '../app/toast'
 import PostCard from '../components/posts/PostCard'
@@ -299,6 +300,78 @@ function ServerResultCard({ server, domain }) {
   )
 }
 
+// Maps a /lookup result's objectType to a route and a display label. Kept
+// separate from parseKowloonId's NAVIGABLE_TYPES (which only knows the
+// *shape* of an id, not this app's route templates) since the two vary
+// independently — a type can be classified as navigable in principle while
+// this app specifically hasn't built a page for it.
+function goToPathFor(item) {
+  const objectType = item?.objectType || item?.type
+  switch (objectType) {
+    // sanitizeUser() puts the ActivityPub actor URL in `id` and the Kowloon
+    // handle (@user@domain) in `handle` — every route in this app addresses
+    // users by handle, so `id` would silently link to the wrong thing here.
+    case 'User':
+    case 'Person':
+      return item.handle ? `/users/${encodeURIComponent(item.handle)}` : null
+    case 'Post':   return `/posts/${encodeURIComponent(item.id)}`
+    case 'Circle': return `/circles/${encodeURIComponent(item.id)}`
+    case 'Group':  return `/groups/${encodeURIComponent(item.id)}`
+    case 'Page':   return `/pages/${encodeURIComponent(item.id)}`
+    default: return null
+  }
+}
+
+function GoToResultCard({ item }) {
+  const objectType = item?.objectType || item?.type
+  const path = goToPathFor(item)
+  if (!path) return null
+
+  const label =
+    objectType === 'User' || objectType === 'Person'
+      ? (item.name || item.preferredUsername || item.handle)
+      : (item.title || item.name || item.summary || item.id)
+
+  const sub =
+    objectType === 'User' || objectType === 'Person' ? item.handle
+      : objectType === 'Post'   ? 'Post'
+      : objectType === 'Circle' ? 'Circle'
+      : objectType === 'Group'  ? 'Group'
+      : objectType === 'Page'   ? 'Page'
+      : null
+
+  return (
+    <Link
+      to={path}
+      className="flex items-center gap-3 py-4 border-b border-base-300 hover:bg-base-200 px-2 -mx-2 transition-colors"
+    >
+      {objectType === 'User' || objectType === 'Person' ? (
+        <UserAvatar user={{ profile: item.profile, id: item.handle }} size="md" />
+      ) : objectType === 'Circle' ? (
+        <CircleIcon type="circle" size="md" className="shrink-0 opacity-70" />
+      ) : (
+        <div className="w-11 h-11 bg-secondary flex items-center justify-center shrink-0" style={hexMask}>
+          {objectType === 'Group'
+            ? <Users2 size={20} className="text-secondary-content opacity-70" />
+            : objectType === 'Page'
+            ? <BookOpen size={20} className="text-secondary-content opacity-70" />
+            : <FileText size={20} className="text-secondary-content opacity-70" />
+          }
+        </div>
+      )}
+      <div className="flex flex-col min-w-0 flex-1">
+        <span className="font-display text-xl tracking-wide leading-none truncate">{label}</span>
+        {sub && (
+          <span className="font-ui text-xs uppercase tracking-widest text-base-content/55 mt-0.5">
+            {sub}
+          </span>
+        )}
+      </div>
+      <ArrowRight size={16} className="text-base-content/30 shrink-0" />
+    </Link>
+  )
+}
+
 function SectionHeader({ title, count, onSeeAll }) {
   return (
     <div className="flex items-end justify-between border-b-2 border-base-300 pb-2 mb-0 mt-6 first:mt-0">
@@ -360,6 +433,10 @@ export default function SearchPage() {
   const [serverResult, setServerResult]   = useState(null)
   const [serverLoading, setServerLoading] = useState(false)
 
+  const [goToResult, setGoToResult] = useState(null)
+  const [goToLoading, setGoToLoading] = useState(false)
+  const [goToError, setGoToError]   = useState(null)
+
   const q = query.trim()
 
   // A bare @domain (starts with @, no second @) is a remote-server lookup —
@@ -367,6 +444,15 @@ export default function SearchPage() {
   const isServerQuery =
     query.startsWith('@') && !query.slice(1).includes('@') && q.length > 1
   const serverDomain = isServerQuery ? query.slice(1).trim() : ''
+
+  // Everything else parseKowloonId recognizes as a real, navigable id/handle
+  // (@user@domain, post:/circle:/group:/page: ids) — Server is excluded since
+  // isServerQuery above already owns that case end-to-end, and Bookmark/Reply/
+  // React are recognized ids with no standalone destination on this platform,
+  // so a card for them would just be a dead end.
+  const idMatch = q ? parseKowloonId(q) : { type: 'Unknown' }
+  const isGoToQuery =
+    !isServerQuery && idMatch.type !== 'Unknown' && NAVIGABLE_TYPES.has(idMatch.type)
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -471,6 +557,30 @@ export default function SearchPage() {
     return () => { cancelled = true }
   }, [client, serverDomain, isServerQuery])
 
+  // "Go to" lookup for a recognized id/handle. Runs GET /lookup, which
+  // enforces the exact same visibility rules as everywhere else in the app —
+  // a 404 here can mean "doesn't exist" or "you can't see it"; the server
+  // deliberately doesn't distinguish the two, so neither does this UI.
+  useEffect(() => {
+    if (!client || !isGoToQuery) { setGoToResult(null); setGoToError(null); return }
+    let cancelled = false
+    setGoToLoading(true)
+    setGoToError(null)
+    client.feeds.lookup({ id: q })
+      .then((res) => { if (!cancelled) setGoToResult(res?.item ?? null) })
+      .catch((err) => {
+        if (cancelled) return
+        setGoToResult(null)
+        setGoToError(
+          err?.statusCode === 404
+            ? t('search.goToNotFound', { defaultValue: "Nothing found at that ID — it may not exist, or you may not have access to it." })
+            : t('search.goToFailed', { defaultValue: 'Could not look that up.' })
+        )
+      })
+      .finally(() => { if (!cancelled) setGoToLoading(false) })
+    return () => { cancelled = true }
+  }, [client, q, isGoToQuery, t])
+
   // Partial cached-server matches, minus the exact @domain shown by the live
   // lookup above.
   const partialServers = (serverMatches ?? []).filter(
@@ -557,6 +667,22 @@ export default function SearchPage() {
         </div>
       )}
 
+      {/* "Go to" — the input is a recognized Kowloon id/handle, not free text. */}
+      {isGoToQuery && (
+        <div className="flex flex-col gap-2">
+          <p className="font-ui text-[10px] uppercase tracking-widest text-base-content/40">
+            {t('search.goTo', { defaultValue: 'Go to' })}
+          </p>
+          {goToLoading ? (
+            <Spinner />
+          ) : goToResult ? (
+            <GoToResultCard item={goToResult} />
+          ) : (
+            <EmptyState message={goToError || t('search.goToNotFound', { defaultValue: 'Nothing found at that ID.' })} />
+          )}
+        </div>
+      )}
+
       {loading && <Spinner centered />}
 
       {!loading && !q && (
@@ -570,7 +696,7 @@ export default function SearchPage() {
 
       {/* "All" tab — a first page of each type, each with a "See all" jump. */}
       {!loading && q && type === 'all' && (
-        allEmpty && !isServerQuery ? (
+        allEmpty && !isServerQuery && !isGoToQuery ? (
           <EmptyState message={t('search.noResults', { defaultValue: `No results for "${query}"` })} />
         ) : (
           <div className="flex flex-col gap-2">
