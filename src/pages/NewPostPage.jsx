@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
-import { X, Upload, Music, GripVertical, ChevronDown, ChevronRight } from 'lucide-react'
+import { X, Upload, Image as ImageIcon, Video, Music, GripVertical, ChevronDown, ChevronRight } from 'lucide-react'
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, KeyboardSensor, useSensor, useSensors,
 } from '@dnd-kit/core'
@@ -276,7 +276,8 @@ export default function NewPostPage() {
   const [artFeaturedPreview, setArtFeaturedPreview] = useState(null)
 
   const hrefRef          = useRef(null)
-  const mediaInputRef    = useRef(null) // photo/video
+  const photoInputRef    = useRef(null)
+  const videoInputRef    = useRef(null)
   const audioInputRef    = useRef(null)
   const artImageInputRef = useRef(null)
 
@@ -632,28 +633,41 @@ export default function NewPostPage() {
                 </SortableContext>
               </DndContext>
             )}
-            {/* Two accept-scoped buttons rather than one combined one — see
-                PostComposer.jsx's identical split for why (issue #60: a
-                broad multi-type accept with no capture hint is what produces
-                Android's ambiguous "Camera / Camera Files / Files" chooser).
-                handleFileAdd only ever reads e.target.files, so both inputs
-                reuse it unchanged. */}
-            <div className="flex gap-2">
-              <button type="button" onClick={() => mediaInputRef.current?.click()}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-base-300 border-dashed font-ui text-xs uppercase tracking-widest text-base-content/40 hover:border-primary hover:text-primary transition-colors">
-                <Upload size={13} />
-                {attachments.length > 0
-                  ? t('composer.addMore', { defaultValue: 'Add more files' })
-                  : t('composer.addPhotoVideo', { defaultValue: 'Photo or Video' })
-                }
+            {/* Three single-type-accept buttons, not two — issue #60.
+                Chromium's fast single-tap Android Photo Picker only kicks in
+                when `accept` resolves to exactly one clean type; combining
+                image/*+video/* (even alone, no audio) still falls back to
+                the full "Choose an action" chooser (Camera / Camera
+                Camcorder / Files) — confirmed live, not assumed: the first
+                Photo+Video split still showed that chooser on a real
+                Android phone, while a clean audio/*-only input opened
+                straight into file selection with no chooser at all. So each
+                button gets its OWN single-type input. handleFileAdd only
+                ever reads e.target.files, so all three reuse it unchanged. */}
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => photoInputRef.current?.click()}
+                className="flex-1 min-w-[7rem] flex items-center justify-center gap-2 px-4 py-3 border-2 border-base-300 border-dashed font-ui text-xs uppercase tracking-widest text-base-content/40 hover:border-primary hover:text-primary transition-colors">
+                <ImageIcon size={13} />
+                {t('composer.addPhoto', { defaultValue: 'Photo' })}
+              </button>
+              <button type="button" onClick={() => videoInputRef.current?.click()}
+                className="flex-1 min-w-[7rem] flex items-center justify-center gap-2 px-4 py-3 border-2 border-base-300 border-dashed font-ui text-xs uppercase tracking-widest text-base-content/40 hover:border-primary hover:text-primary transition-colors">
+                <Video size={13} />
+                {t('composer.addVideo', { defaultValue: 'Video' })}
               </button>
               <button type="button" onClick={() => audioInputRef.current?.click()}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-base-300 border-dashed font-ui text-xs uppercase tracking-widest text-base-content/40 hover:border-primary hover:text-primary transition-colors">
+                className="flex-1 min-w-[7rem] flex items-center justify-center gap-2 px-4 py-3 border-2 border-base-300 border-dashed font-ui text-xs uppercase tracking-widest text-base-content/40 hover:border-primary hover:text-primary transition-colors">
                 <Music size={13} />
                 {t('composer.addAudio', { defaultValue: 'Audio' })}
               </button>
             </div>
-            <input ref={mediaInputRef} type="file" multiple accept="image/*,video/*" className="hidden" onChange={handleFileAdd} />
+            {attachments.length > 0 && (
+              <p className="font-ui text-[10px] uppercase tracking-widest text-base-content/30 mt-1">
+                {t('composer.addMoreHint', { defaultValue: 'Tap any button above to add more' })}
+              </p>
+            )}
+            <input ref={photoInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleFileAdd} />
+            <input ref={videoInputRef} type="file" multiple accept="video/*" className="hidden" onChange={handleFileAdd} />
             <input ref={audioInputRef} type="file" multiple accept="audio/*" className="hidden" onChange={handleFileAdd} />
           </Field>
         )}
