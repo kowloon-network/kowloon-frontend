@@ -25,7 +25,7 @@ import LocationField from './LocationField'
 import AudioPlayer from '../ui/AudioPlayer'
 import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faPhotoFilm, faGripVertical } from '@fortawesome/free-solid-svg-icons'
+import { faPhotoFilm, faGripVertical, faMusic } from '@fortawesome/free-solid-svg-icons'
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, KeyboardSensor, useSensor, useSensors,
 } from '@dnd-kit/core'
@@ -390,7 +390,24 @@ export default function PostComposer({
   const [typeDropdownOpen, setTypeDropdownOpen] = useState(false)
 
   const composerRef      = useRef(null)
-  const fileInputRef     = useRef(null)
+  const fileInputRef     = useRef(null) // photo/video — also the only input when mediaAccept is narrowed to one kind (e.g. PicsComposeFab's image-only)
+  const audioInputRef    = useRef(null) // only rendered when mediaAccept spans both a visual type and audio
+
+  // A single <input accept="image/*,audio/*,video/*"> is what produced the
+  // confusing native chooser on Android (issue #60) — a broad multi-type
+  // accept with no capture hint shows an ambiguous "Camera / Camera Files /
+  // Files"-style menu. Splitting into two accept-scoped inputs behind two
+  // clearly-labeled buttons removes the ambiguity; each button only ever
+  // asks the OS for one clear kind of thing. Only splits when mediaAccept
+  // actually spans both categories — a caller that already narrowed it to
+  // one kind (e.g. PicsComposeFab's image-only) keeps the single button it
+  // had, since there's nothing to split there.
+  const mediaAcceptsAudio  = /(^|,)\s*audio\//.test(mediaAccept)
+  const mediaAcceptsVisual = /(^|,)\s*(image|video)\//.test(mediaAccept)
+  const splitMediaPicker   = mediaAcceptsAudio && mediaAcceptsVisual
+  const visualAccept = splitMediaPicker
+    ? mediaAccept.split(',').filter((t) => !t.trim().startsWith('audio/')).join(',')
+    : mediaAccept
   const artImageInputRef = useRef(null)
   const hrefInputRef     = useRef(null)
   // The href we've already auto-filled title/featured/body from, so a later
@@ -1055,14 +1072,35 @@ export default function PostComposer({
           {postType === 'Media' && (
             <div className="border-b-2 border-base-300">
               {attachments.length === 0 ? (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full flex items-center justify-center gap-3 py-8 bg-base-200 hover:bg-base-300 transition-colors font-ui text-sm uppercase tracking-widest text-base-content/60 hover:text-base-content cursor-pointer"
-                >
-                  <FontAwesomeIcon icon={faPhotoFilm} className="text-lg" />
-                  {t('composer.addMedia')}
-                </button>
+                splitMediaPicker ? (
+                  <div className="flex">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex-1 flex items-center justify-center gap-3 py-8 bg-base-200 hover:bg-base-300 transition-colors font-ui text-sm uppercase tracking-widest text-base-content/60 hover:text-base-content cursor-pointer border-r border-base-300"
+                    >
+                      <FontAwesomeIcon icon={faPhotoFilm} className="text-lg" />
+                      {t('composer.addPhotoVideo', { defaultValue: 'Photo or Video' })}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => audioInputRef.current?.click()}
+                      className="flex-1 flex items-center justify-center gap-3 py-8 bg-base-200 hover:bg-base-300 transition-colors font-ui text-sm uppercase tracking-widest text-base-content/60 hover:text-base-content cursor-pointer"
+                    >
+                      <FontAwesomeIcon icon={faMusic} className="text-lg" />
+                      {t('composer.addAudio', { defaultValue: 'Audio' })}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full flex items-center justify-center gap-3 py-8 bg-base-200 hover:bg-base-300 transition-colors font-ui text-sm uppercase tracking-widest text-base-content/60 hover:text-base-content cursor-pointer"
+                  >
+                    <FontAwesomeIcon icon={faPhotoFilm} className="text-lg" />
+                    {t('composer.addMedia')}
+                  </button>
+                )
               ) : (
                 <>
                   <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleAttachmentDragEnd}>
@@ -1074,13 +1112,29 @@ export default function PostComposer({
                       ))}
                     </SortableContext>
                   </DndContext>
+                  {splitMediaPicker ? (
+                    <div className="flex border-t border-base-300">
+                      <button type="button" onClick={() => fileInputRef.current?.click()}
+                        className="flex-1 px-4 py-2.5 font-ui text-xs uppercase tracking-widest text-base-content/40 hover:text-base-content hover:bg-base-200 transition-colors text-center border-r border-base-300">
+                        {t('composer.addPhotoVideo', { defaultValue: 'Photo or Video' })}
+                      </button>
+                      <button type="button" onClick={() => audioInputRef.current?.click()}
+                        className="flex-1 px-4 py-2.5 font-ui text-xs uppercase tracking-widest text-base-content/40 hover:text-base-content hover:bg-base-200 transition-colors text-center">
+                        {t('composer.addAudio', { defaultValue: 'Audio' })}
+                      </button>
+                    </div>
+                  ) : (
                   <button type="button" onClick={() => fileInputRef.current?.click()}
                     className="w-full px-4 py-2.5 font-ui text-xs uppercase tracking-widest text-base-content/40 hover:text-base-content hover:bg-base-200 transition-colors text-center border-t border-base-300">
                     {t('composer.addMore')}
                   </button>
+                  )}
                 </>
               )}
-              <input ref={fileInputRef} type="file" multiple accept={mediaAccept} className="hidden" onChange={handleFileAdd} />
+              <input ref={fileInputRef} type="file" multiple accept={visualAccept} className="hidden" onChange={handleFileAdd} />
+              {splitMediaPicker && (
+                <input ref={audioInputRef} type="file" multiple accept="audio/*" className="hidden" onChange={handleFileAdd} />
+              )}
             </div>
           )}
 
