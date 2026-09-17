@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, ChevronDown, ChevronRight, Upload } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronRight, Upload, Music } from 'lucide-react'
 import { useClient } from '../hooks/useClient'
 import PostTypeSelector from '../components/posts/PostTypeSelector'
 import RichTextEditor from '../components/posts/RichTextEditor'
@@ -207,7 +207,8 @@ export default function EditPostPage() {
   // { existing:true, fileId, url }, or { existing:false, file, previewUrl }.
   const [featuredImage, setFeaturedImage] = useState(null)
 
-  const mediaInputRef    = useRef(null)
+  const mediaInputRef    = useRef(null) // photo/video
+  const audioInputRef    = useRef(null)
   const artImageInputRef = useRef(null)
 
   const load = useCallback(async () => {
@@ -569,14 +570,24 @@ export default function EditPostPage() {
                 })}
               </div>
             )}
-            <button type="button" onClick={() => mediaInputRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-3 border-2 border-base-300 border-dashed font-ui text-xs uppercase tracking-widest text-base-content/40 hover:border-primary hover:text-primary transition-colors w-full">
-              <Upload size={13} />
-              {attachments.length > 0
-                ? t('composer.addMore', { defaultValue: 'Add more files' })
-                : t('composer.addMedia', { defaultValue: 'Add photos, videos or audio' })}
-            </button>
-            <input ref={mediaInputRef} type="file" multiple accept="image/*,audio/*,video/*" className="hidden" onChange={handleFileAdd} />
+            {/* Two accept-scoped buttons rather than one combined one — see
+                PostComposer.jsx's identical split for why (issue #60). */}
+            <div className="flex gap-2">
+              <button type="button" onClick={() => mediaInputRef.current?.click()}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-base-300 border-dashed font-ui text-xs uppercase tracking-widest text-base-content/40 hover:border-primary hover:text-primary transition-colors">
+                <Upload size={13} />
+                {attachments.length > 0
+                  ? t('composer.addMore', { defaultValue: 'Add more files' })
+                  : t('composer.addPhotoVideo', { defaultValue: 'Photo or Video' })}
+              </button>
+              <button type="button" onClick={() => audioInputRef.current?.click()}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-base-300 border-dashed font-ui text-xs uppercase tracking-widest text-base-content/40 hover:border-primary hover:text-primary transition-colors">
+                <Music size={13} />
+                {t('composer.addAudio', { defaultValue: 'Audio' })}
+              </button>
+            </div>
+            <input ref={mediaInputRef} type="file" multiple accept="image/*,video/*" className="hidden" onChange={handleFileAdd} />
+            <input ref={audioInputRef} type="file" multiple accept="audio/*" className="hidden" onChange={handleFileAdd} />
           </Field>
         )}
 
