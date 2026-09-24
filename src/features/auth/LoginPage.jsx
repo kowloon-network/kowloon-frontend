@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { loginAsync, clearError } from './authSlice'
 import Field from '../../components/ui/Field'
 import Button from '../../components/ui/Button'
+import { Heading, Eyebrow } from '../../components/ui/Heading'
 import AuthSplash from '../../components/auth/AuthSplash'
 import { useIsDesktop } from '../../hooks/useIsDesktop'
 
@@ -94,9 +95,9 @@ export default function LoginPage() {
   if (!sessionChecked) {
     return (
       <div className="min-h-screen bg-base-200 flex items-center justify-center">
-        <span className="font-ui text-xs uppercase tracking-widest text-base-content/40 animate-pulse">
+        <Eyebrow className="animate-pulse">
           {t('common.loading', { defaultValue: 'Loading…' })}
-        </span>
+        </Eyebrow>
       </div>
     )
   }
@@ -116,18 +117,18 @@ export default function LoginPage() {
 
         <div className="relative z-10">
           <div className="w-12 h-1 bg-primary mb-8" />
-          <p className="font-ui text-xs uppercase tracking-widest text-white/70">
+          <Eyebrow className="text-white/70">
             {t('app.tagline', { defaultValue: 'Your space on the open web' })}
-          </p>
+          </Eyebrow>
         </div>
 
         <div className="relative z-10">
-          <h1 className="font-display text-9xl leading-none tracking-wide text-white">
+          <Heading as="h1" className="text-9xl leading-none tracking-wide text-white">
             KOWLOON
-          </h1>
+          </Heading>
           <div className="mt-4 flex items-center gap-3">
             <div className="h-px flex-1 bg-white/20" />
-            <span className="font-ui text-xs uppercase tracking-widest text-white/50">kwln.org</span>
+            <Eyebrow className="text-white/50">kwln.org</Eyebrow>
           </div>
         </div>
 
@@ -161,35 +162,35 @@ export default function LoginPage() {
               background: 'linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.15) 55%, rgba(0,0,0,0.55))',
             }} />
             <div className="absolute inset-x-0 bottom-0 z-10 p-6">
-              <h1 className="font-display text-3xl leading-none tracking-wide text-white">KOWLOON</h1>
+              <Heading as="h1" className="text-3xl leading-none tracking-wide text-white">KOWLOON</Heading>
               <div className="w-8 h-0.5 bg-primary mt-3" />
             </div>
           </div>
 
           <div className="mb-8">
-            <h2 className="font-display text-4xl leading-none tracking-wide text-base-content">
+            <Heading className="text-4xl leading-none tracking-wide">
               {t('auth.loginTitle', { defaultValue: 'Sign In' })}
-            </h2>
-            <p className="font-ui text-xs uppercase tracking-widest text-base-content/40 mt-2">
+            </Heading>
+            <Eyebrow className="mt-2">
               {t('auth.loginSubtitle', { defaultValue: 'Welcome back' })}
-            </p>
+            </Eyebrow>
           </div>
 
           {successMsg && (
             <div className="mb-6 px-4 py-3 border-l-4 border-success bg-success/5">
-              <p className="font-ui text-xs uppercase tracking-widest text-success">{successMsg}</p>
+              <Eyebrow className="text-success">{successMsg}</Eyebrow>
             </div>
           )}
 
           {expiredMsg && !error && (
             <div className="mb-6 px-4 py-3 border-l-4 border-warning bg-warning/5">
-              <p className="font-ui text-xs uppercase tracking-widest text-warning">{expiredMsg}</p>
+              <Eyebrow className="text-warning">{expiredMsg}</Eyebrow>
             </div>
           )}
 
           {error && (
             <div role="alert" className="mb-6 px-4 py-3 border-l-4 border-error bg-error/5">
-              <p className="font-ui text-xs uppercase tracking-widest text-error">{error}</p>
+              <Eyebrow className="text-error">{error}</Eyebrow>
             </div>
           )}
 
@@ -243,9 +244,9 @@ export default function LoginPage() {
             )}
 
             {isForeign && (
-              <p className="font-ui text-xs uppercase tracking-widest text-base-content/40 -mt-2">
+              <Eyebrow className="-mt-2">
                 {t('auth.foreignHint', { defaultValue: `You'll sign in on ${foreignDomain} — your password stays there.` })}
-              </p>
+              </Eyebrow>
             )}
 
             <Button type="submit" loading={isLoading} className="mt-3 w-full">
@@ -257,17 +258,17 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-8 pt-6 border-t border-base-300 flex flex-col gap-3">
-            <p className="font-ui text-xs uppercase tracking-widest text-base-content/40">
+            <Eyebrow>
               {t('auth.noAccount', { defaultValue: "Don't have an account?" })}{' '}
               <Link to="/register" className="text-primary hover:opacity-70 transition-opacity">
                 {t('auth.signUp', { defaultValue: 'Create one' })}
               </Link>
-            </p>
-            <p className="font-ui text-xs uppercase tracking-widest text-base-content/40">
+            </Eyebrow>
+            <Eyebrow>
               <Link to="/" className="text-primary hover:opacity-70 transition-opacity">
                 {t('auth.backToHome', { defaultValue: 'Back to homepage' })}
               </Link>
-            </p>
+            </Eyebrow>
           </div>
 
         </div>
