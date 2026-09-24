@@ -14,15 +14,8 @@ import { useState, useRef, useEffect, useId } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, ChevronDown } from 'lucide-react'
-import CircleIcon from '../ui/CircleIcon'
-
-const hexMask = {
-  WebkitMaskImage: 'url(/hex-mask.svg)',
-  maskImage: 'url(/hex-mask.svg)',
-  maskSize: 'contain',
-  maskRepeat: 'no-repeat',
-  maskPosition: 'center',
-}
+import CircleAvatar from '../ui/CircleAvatar'
+import GroupAvatar from '../ui/GroupAvatar'
 
 export default function CircleSelector({
   circles = [],
@@ -179,16 +172,8 @@ export default function CircleSelector({
               }`
         } ${className}`}
       >
-        {isTitle && circle && (
-          circle.icon
-            ? <img src={circle.icon} alt="" className="w-9 h-9 object-cover shrink-0" style={hexMask} />
-            : <CircleIcon type="circle" size="lg" className="shrink-0 opacity-60" />
-        )}
-        {!isTitle && circle && (
-          circle.icon
-            ? <img src={circle.icon} alt="" className="w-4 h-4 object-cover shrink-0" style={hexMask} />
-            : <CircleIcon type="circle" size="sm" className="shrink-0 opacity-60" />
-        )}
+        {isTitle && circle && <CircleAvatar circle={circle} size="w-9 h-9" />}
+        {!isTitle && circle && <CircleAvatar circle={circle} size="w-4 h-4" />}
         <span className={isTitle ? 'text-3xl leading-none' : ''} aria-hidden="true">{label}</span>
         <ChevronDown className={`transition-transform ${isTitle ? 'w-5 h-5 mt-0.5' : 'w-3 h-3'} ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
       </button>
@@ -280,10 +265,7 @@ export default function CircleSelector({
                         : 'hover:bg-base-200 text-base-content'
                     }`}
                   >
-                    {circle.icon
-                      ? <img src={circle.icon} alt="" className="w-5 h-5 object-cover shrink-0" style={hexMask} />
-                      : <CircleIcon type="circle" size="sm" className="shrink-0 opacity-50" />
-                    }
+                    <CircleAvatar circle={circle} size="w-5 h-5" />
                     <span className="flex flex-col min-w-0">
                       <span className="font-ui text-xs uppercase tracking-widest truncate">{circle.name}</span>
                       {circle.summary && (
@@ -323,10 +305,7 @@ export default function CircleSelector({
                         : 'hover:bg-base-200 text-base-content'
                     }`}
                   >
-                    {grp.icon
-                      ? <img src={grp.icon} alt="" className="w-5 h-5 object-cover shrink-0" style={hexMask} />
-                      : <CircleIcon type="group" size="sm" className="shrink-0 opacity-50" />
-                    }
+                    <GroupAvatar group={grp} size="w-5 h-5" />
                     <span className="font-ui text-xs uppercase tracking-widest truncate">{grp.name}</span>
                   </button>
                 </li>

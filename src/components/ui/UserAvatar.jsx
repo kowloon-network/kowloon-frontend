@@ -31,10 +31,10 @@ export default function UserAvatar({ user, size = 'md' }) {
 
   // User avatars are circular (universal "person" convention).
   // Circles and Groups still use the hex mask elsewhere as the brand mark.
+  // No drop shadow (IDEOLOGY.md §2 rule 2, no exceptions).
   return (
     <div
       className={`${sizes[size]} shrink-0 rounded-full overflow-hidden bg-primary flex items-center justify-center`}
-      style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.18)' }}
       title={tooltip || undefined}
       aria-label={tooltip || undefined}
     >

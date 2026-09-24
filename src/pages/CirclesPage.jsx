@@ -15,39 +15,11 @@ import { useTranslation } from 'react-i18next'
 import { Ban, VolumeX, Plus } from 'lucide-react'
 import { sortByPins } from '@kowloon/client'
 import { useClient } from '../hooks/useClient'
-import CircleIcon from '../components/ui/CircleIcon'
+import CircleAvatar from '../components/ui/CircleAvatar'
 import CopyCircleMenu from '../components/circles/CopyCircleMenu'
 import Spinner from '../components/ui/Spinner'
 import ErrorState from '../components/ui/ErrorState'
 import EmptyState from '../components/ui/EmptyState'
-import sizedUrl from '../lib/sizedUrl'
-
-const hexMask = {
-  WebkitMaskImage: 'url(/hex-mask.svg)',
-  maskImage: 'url(/hex-mask.svg)',
-  maskSize: 'contain',
-  maskRepeat: 'no-repeat',
-  maskPosition: 'center',
-}
-
-function CircleAvatar({ circle }) {
-  if (circle.icon) {
-    return (
-      <img
-        loading="lazy"
-        src={sizedUrl(circle.icon, 200)}
-        alt={circle.name}
-        className="w-14 h-14 object-cover shrink-0"
-        style={hexMask}
-      />
-    )
-  }
-  return (
-    <div className="w-14 h-14 bg-secondary flex items-center justify-center shrink-0" style={hexMask}>
-      <CircleIcon type="circle" size="lg" className="opacity-70 text-secondary-content" />
-    </div>
-  )
-}
 
 function CircleBrowseCard({ circle, isLoggedIn }) {
   const { t } = useTranslation()
@@ -55,7 +27,7 @@ function CircleBrowseCard({ circle, isLoggedIn }) {
   return (
     <div className="flex items-start gap-4 py-5 border-b border-base-300 group">
       <Link to={`/circles/${encodeURIComponent(circle.id)}`} className="shrink-0 mt-1">
-        <CircleAvatar circle={circle} />
+        <CircleAvatar circle={circle} size="lg" />
       </Link>
 
       <div className="flex flex-col gap-1.5 min-w-0 flex-1">
