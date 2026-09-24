@@ -9,6 +9,11 @@
 //
 // State lives in feedSlice — the component reads `activeTypes` and dispatches
 // `setTypes` with the whole next array, mirroring mobile's onSetTypes(array).
+//
+// Inactive icons stay tinted (opacity-25 on the type-colored icon), not
+// grayscale — a faded whisper of the type's own color still reads as
+// "nameable as its type," where full desaturation erases that signal
+// entirely (IDEOLOGY.md §4). See kowloon-design/components/TypeFilter.md.
 
 import { useDispatch, useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
@@ -47,7 +52,7 @@ export default function TypeFilter({ className = '' }) {
             title={t(`postTypes.${type}`, { defaultValue: type })}
             className="shrink-0 transition-opacity"
           >
-            <span className={active ? '' : 'opacity-25 grayscale'}>
+            <span className={active ? '' : 'opacity-25'}>
               <PostTypeIcon type={type} size="sm" />
             </span>
           </button>
