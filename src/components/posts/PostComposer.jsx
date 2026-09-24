@@ -604,6 +604,30 @@ export default function PostComposer({
     photoInputRef.current?.click()
   }, [autoOpenFilePicker, expanded, postType])
 
+  const autoOpenedMediaTypeRef = useRef(false)
+
+  // Auto-open the file picker for the first available media kind the moment
+  // Media becomes the selected post type in the normal composer -- distinct
+  // from the deep-entry effect above (which is for a flow locked to Media
+  // from the start). A Media post obviously means adding media next, so skip
+  // clicking into a kind's button first. Guarded so it only fires once per
+  // *transition* into Media (not on every re-render while Media stays
+  // selected), and skipped when attachments already exist or the deep-entry
+  // flow above already owns this behavior for this instance.
+  useEffect(() => {
+    if (postType !== 'Media') {
+      autoOpenedMediaTypeRef.current = false
+      return
+    }
+    if (autoOpenFilePicker || !expanded || autoOpenedMediaTypeRef.current || attachments.length > 0) return
+    autoOpenedMediaTypeRef.current = true
+    mediaKinds[0]?.ref.current?.click()
+    // mediaKinds is a fresh array every render (derived from mediaAccept,
+    // which doesn't change); omitted to avoid re-running this effect on
+    // every render -- the ref guard above already makes re-runs a no-op.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenFilePicker, postType, expanded, attachments.length])
+
   const handleCancel = () => {
     draft.clear()
     dedupeRef.current = null
