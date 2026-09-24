@@ -60,7 +60,7 @@ export default function EventCard({ post, showFull = false }) {
     <article
       id={post?.id}
       data-post-id={post?.id}
-      className="flex flex-col gap-3 py-5 border-b border-base-300 mb-8"
+      className="flex flex-col gap-3 py-5 mb-8"
     >
 
       {/* Featured image */}
@@ -110,7 +110,7 @@ export default function EventCard({ post, showFull = false }) {
       )}
 
       {/* Footer */}
-      <div className="flex items-center gap-3 pt-2 border-t border-base-300">
+      <div className="flex items-center gap-3 pt-2">
         <VisibilityIcon visibility={post?.visibility} />
         <PostTypeIcon type="Event" size="sm" />
         <PostToolbar post={post} />

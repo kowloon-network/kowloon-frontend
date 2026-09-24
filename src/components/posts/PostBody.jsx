@@ -279,6 +279,68 @@ function Attachments({ attachments = [] }) {
   )
 }
 
+// Capped feed-card media grid (Card.md decision 2) — up to 4 attachments in
+// a 2x2 grid (1 shown full-width); a 5th+ replaces the last cell with a
+// "+N more" link to the full post. Images, video, and audio share the same
+// cap and cell treatment here — the richer main+thumbnail-strip gallery
+// (MediaGallery) and per-item players (Attachments) are reserved for the
+// full post detail page (showFull), which this doesn't touch.
+function AttachmentGrid({ attachments = [], postUrl }) {
+  if (!attachments.length) return null
+  const shown = attachments.slice(0, 4)
+  const extra = attachments.length - shown.length
+  const cols = shown.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
+
+  return (
+    <div className={`grid ${cols} gap-1 mt-3 mb-3`}>
+      {shown.map((a, i) => {
+        const isOverflowCell = i === shown.length - 1 && extra > 0
+        // An odd, uncapped final item spans both columns so the grid's
+        // bottom edge stays flush instead of leaving an empty cell beside
+        // it — matches mobile's existing 2-col grid behavior.
+        const isOddFinal = !isOverflowCell && shown.length > 1 && shown.length % 2 === 1 && i === shown.length - 1
+        const mt = a?.mediaType ?? ''
+        const isImage = mt.startsWith('image/')
+        const isVideo = mt.startsWith('video/')
+        const isAudio = mt.startsWith('audio/')
+        const cell = (
+          <div className={`relative overflow-hidden bg-base-300 ${isOddFinal ? 'col-span-2 aspect-[2/1]' : 'aspect-square'}`}>
+            {isImage && (
+              <img loading="lazy" src={sizedUrl(a.url, 400)} alt={a.name ?? ''} className="w-full h-full object-cover" />
+            )}
+            {isVideo && (
+              <>
+                <video src={a.url} muted preload="metadata" className="w-full h-full object-cover" />
+                <span className="absolute inset-0 flex items-center justify-center bg-black/30">
+                  <Play size={24} className="text-white" />
+                </span>
+              </>
+            )}
+            {isAudio && (
+              <span className="absolute inset-0 flex items-center justify-center">
+                <Music size={24} className="text-base-content/70" />
+              </span>
+            )}
+            {!isImage && !isVideo && !isAudio && (
+              <span className="absolute inset-0 flex items-center justify-center">
+                <FileText size={24} className="text-base-content/70" />
+              </span>
+            )}
+            {isOverflowCell && (
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                <span className="font-ui text-sm uppercase tracking-widest text-white">+{extra} more</span>
+              </div>
+            )}
+          </div>
+        )
+        return postUrl
+          ? <Link key={i} to={postUrl}>{cell}</Link>
+          : <div key={i}>{cell}</div>
+      })}
+    </div>
+  )
+}
+
 export default function PostBody({ post, showFull = false }) {
   const navigate = useNavigate()
   const [heroLightbox, setHeroLightbox] = useState(false)
@@ -381,8 +443,12 @@ export default function PostBody({ post, showFull = false }) {
       )
       )}
 
-      {/* Media: gallery (main viewer + thumb strip) */}
-      {isMedia && <MediaGallery attachments={post?.attachments ?? []} />}
+      {/* Media: capped grid in the feed card, full gallery on the detail page */}
+      {isMedia && (
+        showFull
+          ? <MediaGallery attachments={post?.attachments ?? []} />
+          : <AttachmentGrid attachments={post?.attachments ?? []} postUrl={postUrl} />
+      )}
 
       <div
         onClick={handleBodyClick}
@@ -402,7 +468,9 @@ export default function PostBody({ post, showFull = false }) {
       )}
 
       {!isMedia && (post?.attachments?.length ?? 0) > 0 && (
-        <Attachments attachments={post.attachments} />
+        showFull
+          ? <Attachments attachments={post.attachments} />
+          : <AttachmentGrid attachments={post.attachments} postUrl={postUrl} />
       )}
     </div>
   )

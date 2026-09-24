@@ -17,12 +17,12 @@ export default function PostCard({ post, onDeleted, showFull = false }) {
     <article
       id={post?.id}
       data-post-id={post?.id}
-      className={`post-type-${post?.type?.toLowerCase()} flex flex-col gap-3 py-5 border-b border-base-300`}
+      className={`post-type-${post?.type?.toLowerCase()} flex flex-col gap-3 py-5 mb-8`}
     >
       <PostMeta post={post} />
       <PostBody post={post} showFull={showFull} />
       <PostReacts post={post} />
-      <div className="flex items-center gap-3 pt-2 border-t border-base-300">
+      <div className="flex items-center gap-3 pt-2">
         <VisibilityIcon visibility={post?.visibility} />
         <PostTypeIcon type={post?.type} size="sm" />
         <PostToolbar post={post} onDeleted={onDeleted} />
