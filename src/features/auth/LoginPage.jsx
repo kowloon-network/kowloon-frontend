@@ -3,7 +3,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { loginAsync, clearError } from './authSlice'
-import PasswordInput from '../../components/ui/PasswordInput'
+import Field from '../../components/ui/Field'
+import Button from '../../components/ui/Button'
 import AuthSplash from '../../components/auth/AuthSplash'
 import { useIsDesktop } from '../../hooks/useIsDesktop'
 
@@ -34,18 +35,6 @@ function redirectToHomeServer(domain) {
   const redirectUri = `https://${OWN_DOMAIN}/oauth/callback`
   const url = `https://${domain}/oauth/authorize?client_domain=${encodeURIComponent(OWN_DOMAIN)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`
   window.location.href = url
-}
-
-function Field({ label, hint, children }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-baseline justify-between">
-        <label className="font-ui text-xs uppercase tracking-widest text-base-content/50">{label}</label>
-        {hint && <span className="font-ui text-xs uppercase tracking-widest text-base-content/30">{hint}</span>}
-      </div>
-      {children}
-    </div>
-  )
 }
 
 export default function LoginPage() {
@@ -206,56 +195,49 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             {!FIXED_SERVER && (
-              <Field label={t('auth.serverUrl', { defaultValue: 'Server URL' })}>
-                <input
-                  type="url"
-                  value={serverUrl}
-                  onChange={(e) => setServerUrl(e.target.value)}
-                  placeholder={t('auth.serverUrlPlaceholder', { defaultValue: 'https://kwln.org' })}
-                  required
-                  autoComplete="url"
-                  className="w-full px-0 py-2 bg-transparent border-b-2 border-base-300 focus:border-primary outline-none font-ui text-sm tracking-wide text-base-content placeholder:text-base-content/25 transition-colors"
-                />
-              </Field>
+              <Field
+                label={t('auth.serverUrl', { defaultValue: 'Server URL' })}
+                type="url"
+                value={serverUrl}
+                onChange={(e) => setServerUrl(e.target.value)}
+                placeholder={t('auth.serverUrlPlaceholder', { defaultValue: 'https://kwln.org' })}
+                required
+                autoComplete="url"
+              />
             )}
 
             <Field
               label={t('auth.username', { defaultValue: 'Kowloon ID' })}
               hint={t('auth.usernameHint', { defaultValue: 'yours, or @you@another-server' })}
-            >
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder={t('auth.usernamePlaceholder', { defaultValue: 'yourhandle or @yourhandle@server.example' })}
-                required
-                autoComplete="username"
-                autoFocus={!!FIXED_SERVER}
-                className="w-full px-0 py-2 bg-transparent border-b-2 border-base-300 focus:border-primary outline-none font-ui text-sm tracking-wide text-base-content placeholder:text-base-content/25 transition-colors"
-              />
-            </Field>
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder={t('auth.usernamePlaceholder', { defaultValue: 'yourhandle or @yourhandle@server.example' })}
+              required
+              autoComplete="username"
+              autoFocus={!!FIXED_SERVER}
+            />
 
             {!isForeign && (
               <div className="flex flex-col gap-1">
                 <div className="flex items-baseline justify-between">
-                  <label className="font-ui text-xs uppercase tracking-widest text-base-content/50">
+                  <label className="font-ui text-xs uppercase tracking-[0.16em] text-base-content/70">
                     {t('auth.password', { defaultValue: 'Password' })}
                   </label>
                   <Link
                     to="/forgot-password"
                     tabIndex={-1}
-                    className="font-ui text-xs uppercase tracking-widest text-base-content/30 hover:text-primary transition-colors"
+                    className="font-ui text-xs uppercase tracking-[0.16em] text-base-content/30 hover:text-primary transition-colors"
                   >
                     {t('auth.forgotPassword', { defaultValue: 'Forgot?' })}
                   </Link>
                 </div>
-                <PasswordInput
+                <Field
+                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
                   autoComplete="current-password"
-                  className="w-full px-0 py-2 bg-transparent border-b-2 border-base-300 focus:border-primary outline-none font-ui text-sm tracking-wide text-base-content placeholder:text-base-content/25 transition-colors"
                 />
               </div>
             )}
@@ -266,18 +248,12 @@ export default function LoginPage() {
               </p>
             )}
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="mt-3 w-full py-3 bg-primary text-primary-content font-ui text-xs uppercase tracking-widest hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-            >
+            <Button type="submit" loading={isLoading} className="mt-3 w-full">
               {isForeign
                 ? t('auth.continueTo', { defaultValue: `Continue to ${foreignDomain}` })
-                : isLoading
-                ? t('auth.signingIn', { defaultValue: 'Signing in…' })
                 : t('auth.login', { defaultValue: 'Sign In' })
               }
-            </button>
+            </Button>
           </form>
 
           <div className="mt-8 pt-6 border-t border-base-300 flex flex-col gap-3">
