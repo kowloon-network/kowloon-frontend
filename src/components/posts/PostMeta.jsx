@@ -54,7 +54,6 @@ export default function PostMeta({ post }) {
         <Timestamp
           date={post?.published ?? post?.publishedAt ?? post?.createdAt}
           to={timestampTo}
-          compact
           className="font-ui text-xs text-base-content/55 dark:text-base-content/70 leading-none mt-1"
         />
       </div>
