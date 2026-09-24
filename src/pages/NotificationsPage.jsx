@@ -11,7 +11,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useClient } from '../hooks/useClient'
-import { MessageSquare, Heart, UserPlus, Users, Bell, Flag, X, Check, CheckCheck } from 'lucide-react'
+import { MessageSquare, Heart, Users, Bell, Flag, X, Check, CheckCheck } from 'lucide-react'
 import Timestamp from '../components/ui/Timestamp'
 import UserAvatar from '../components/ui/UserAvatar'
 import Spinner from '../components/ui/Spinner'
@@ -19,12 +19,11 @@ import ErrorState from '../components/ui/ErrorState'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const FILTER_TYPES = ['all', 'reply', 'react', 'follow', 'new_post', 'join_request', 'join_approved']
+const FILTER_TYPES = ['all', 'reply', 'react', 'new_post', 'join_request', 'join_approved']
 
 const NOTIF_ICONS = {
   reply:         <MessageSquare size={14} />,
   react:         <Heart         size={14} />,
-  follow:        <UserPlus      size={14} />,
   new_post:      <Bell          size={14} />,
   join_request:  <Users         size={14} />,
   join_approved: <Users         size={14} />,
@@ -34,7 +33,6 @@ const NOTIF_ICONS = {
 const NOTIF_COLORS = {
   reply:         'text-primary',
   react:         'text-error',
-  follow:        'text-success',
   new_post:      'text-base-content/60',
   join_request:  'text-secondary',
   join_approved: 'text-secondary',
@@ -61,10 +59,6 @@ function notificationRoute(notif) {
       // Reply / React / Bookmark: fall through to the href fallback below.
       default: break
     }
-  }
-  // A follow (add-to-circle) points at the actor's profile.
-  if (notif?.type === 'follow' && notif?.actorId) {
-    return `/users/${encodeURIComponent(notif.actorId)}`
   }
   // Fallback: the server-generated href, reduced to a same-origin relative path.
   if (typeof notif?.href === 'string') {
@@ -117,7 +111,11 @@ function NotifBody({ notif, onMarkRead }) {
 }
 
 function NotifCard({ notif, onActivate, onMarkRead, onDismiss }) {
-  const iconClass = NOTIF_COLORS[notif.type] ?? 'text-base-content/60'
+  // Two independent signals, not one shape doing double duty (Notification.md):
+  // a left-edge bar colored by notification type, a small dot for unread --
+  // the icon itself stays a single muted ink color on both, so the bar
+  // carries the color signal alone.
+  const barColor = (NOTIF_COLORS[notif.type] ?? 'text-base-content/60').replace('text-', 'bg-')
   // Build a minimal actor shape for UserAvatar
   const actor = {
     id: notif.actorId,
@@ -136,10 +134,11 @@ function NotifCard({ notif, onActivate, onMarkRead, onDismiss }) {
       tabIndex={0}
       onClick={activate}
       onKeyDown={onKeyDown}
-      className={`flex items-start gap-3 py-4 px-2 -mx-2 border-b border-base-300 group cursor-pointer hover:bg-base-200 transition-colors ${notif.read ? 'opacity-60' : ''}`}
+      className={`flex items-stretch gap-3 py-4 pr-2 -mr-2 border-b border-base-300 group cursor-pointer hover:bg-base-200 transition-colors ${notif.read ? 'opacity-60' : ''}`}
     >
-      <div className={`shrink-0 mt-1 ${iconClass}`}>{NOTIF_ICONS[notif.type] ?? <Bell size={14} />}</div>
-      <div className="shrink-0"><UserAvatar user={actor} size="sm" /></div>
+      <div className={`w-1 shrink-0 ${barColor}`} aria-hidden="true" />
+      <div className="shrink-0 mt-1 text-base-content/50">{NOTIF_ICONS[notif.type] ?? <Bell size={14} />}</div>
+      <div className="shrink-0 mt-1"><UserAvatar user={actor} size="sm" /></div>
       <div className="flex-1 min-w-0 flex flex-col gap-0.5">
         <NotifBody notif={notif} onMarkRead={() => onMarkRead(notif.id)} />
         <Timestamp date={notif.createdAt} />
@@ -231,7 +230,6 @@ export default function NotificationsPage() {
     all:           t('notif.all',          { defaultValue: 'All' }),
     reply:         t('notif.replies',      { defaultValue: 'Replies' }),
     react:         t('notif.reacts',       { defaultValue: 'Reacts' }),
-    follow:        t('notif.follows',      { defaultValue: 'Follows' }),
     new_post:      t('notif.newPosts',     { defaultValue: 'New Posts' }),
     join_request:  t('notif.joinRequests', { defaultValue: 'Join Requests' }),
     join_approved: t('notif.joinApproved', { defaultValue: 'Approved' }),
