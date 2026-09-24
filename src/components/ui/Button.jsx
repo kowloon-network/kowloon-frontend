@@ -1,22 +1,39 @@
 // Button — base button component.
 // Enforces sharp corners, theme tokens, and consistent sizing.
 // Props: variant (primary | secondary | accent | ghost), size (sm | md | lg),
-//        disabled, onClick, type, children
+//        disabled, loading, onClick, type, children
+//
+// Contract: kowloon-design/components/Button.md
+
+import Spinner from './Spinner'
+
+const CONTENT_COLOR = {
+  primary: 'text-primary-content',
+  secondary: 'text-secondary-content',
+  accent: 'text-accent-content',
+  ghost: 'text-base-content',
+}
 
 export default function Button({
   variant = 'primary',
   size = 'md',
   disabled = false,
+  loading = false,
   onClick,
   type = 'button',
   children,
   className = '',
 }) {
-  const variants = {
-    primary:   'bg-primary text-primary-content hover:opacity-90',
-    secondary: 'bg-secondary text-secondary-content hover:opacity-90',
-    accent:    'bg-accent text-accent-content hover:opacity-90',
-    ghost:     'bg-transparent text-base-content hover:bg-base-200',
+  const isDisabled = disabled || loading
+
+  // Disabled dims only the fill, not the label -- a dimmed label is harder
+  // to read at the exact moment someone's asking "why is this disabled?"
+  // Ghost has no fill to dim, so it's unaffected beyond the cursor change.
+  const fills = {
+    primary: isDisabled ? 'bg-primary/60' : 'bg-primary hover:opacity-90',
+    secondary: isDisabled ? 'bg-secondary/60' : 'bg-secondary hover:opacity-90',
+    accent: isDisabled ? 'bg-accent/60' : 'bg-accent hover:opacity-90',
+    ghost: 'bg-transparent hover:bg-base-200',
   }
   const sizes = {
     sm: 'px-3 py-1.5 text-xs',
@@ -28,15 +45,16 @@ export default function Button({
     <button
       type={type}
       onClick={onClick}
-      disabled={disabled}
+      disabled={isDisabled}
       className={`
-        ${variants[variant]} ${sizes[size]}
-        font-ui uppercase tracking-widest transition-opacity
-        disabled:opacity-40 disabled:cursor-not-allowed
+        ${fills[variant]} ${CONTENT_COLOR[variant]} ${sizes[size]}
+        font-ui uppercase tracking-[0.16em] transition-opacity
+        inline-flex items-center justify-center gap-2
+        disabled:cursor-not-allowed
         ${className}
       `}
     >
-      {children}
+      {loading ? <Spinner size="sm" colorClassName={CONTENT_COLOR[variant]} /> : children}
     </button>
   )
 }
