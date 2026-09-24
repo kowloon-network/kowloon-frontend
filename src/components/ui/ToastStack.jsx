@@ -1,9 +1,9 @@
 // ToastStack — single global mount that renders the current toast queue.
 //
 // Style follows the Kowloon editorial aesthetic: hard edges, theme tokens,
-// left-edge accent bar by kind. Positioned bottom-right on desktop and
-// bottom-inset full-width on mobile. Mount once in App.jsx (above the
-// router so pre-auth pages get it too).
+// left-edge accent bar by kind. Positioned top, full-width on narrow
+// viewports; bottom-right, fixed-width from the lg breakpoint up. Mount
+// once in App.jsx (above the router so pre-auth pages get it too).
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -74,7 +74,7 @@ function Toast({ toast }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 16, transition: { duration: 0.2 } }}
       transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
-      className={`${armed ? 'pointer-events-auto' : 'pointer-events-none'} w-full lg:w-80 bg-base-100 border-2 border-base-300 border-l-4 ${meta.bar} shadow-lg flex items-start gap-3 px-4 py-3`}
+      className={`${armed ? 'pointer-events-auto' : 'pointer-events-none'} w-full lg:w-80 bg-base-100 border-2 border-base-300 border-l-4 ${meta.bar} flex items-start gap-3 px-4 py-3`}
     >
       <Icon size={18} className={`mt-0.5 shrink-0 ${meta.iconClass}`} aria-hidden="true" />
       <div className="flex-1 min-w-0">
