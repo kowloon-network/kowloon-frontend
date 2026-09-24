@@ -1,6 +1,7 @@
 // Generates src/theme-colors.generated.css from the shared palette
-// (@kowloon/client/theme/palette.json) — the single source of truth shared with
-// the mobile app. Runs on predev/prebuild. Do not edit the generated CSS by hand.
+// (@kowloon/design/tokens/palette.json) — the single source of truth shared
+// with the mobile app. Runs on predev/prebuild. Do not edit the generated CSS
+// by hand.
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -8,7 +9,7 @@ import { dirname, join } from "node:path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const palettePath = join(
   __dirname,
-  "../node_modules/@kowloon/client/src/theme/palette.json"
+  "../node_modules/@kowloon/design/tokens/palette.json"
 );
 const outPath = join(__dirname, "../src/theme-colors.generated.css");
 
@@ -28,7 +29,7 @@ const lightKeys = Object.keys(palette.light);
 // Dark block only needs the tokens whose value differs from light (overrides).
 const darkKeys = lightKeys.filter((k) => palette.dark[k] !== palette.light[k]);
 
-const css = `/* AUTO-GENERATED from @kowloon/client/theme/palette.json — do not edit.
+const css = `/* AUTO-GENERATED from @kowloon/design/tokens/palette.json — do not edit.
    Run \`npm run gen:theme\` (also runs on predev/prebuild). */
 [data-theme="kowloon"] {
 ${decls(palette.light, lightKeys)}

@@ -36,7 +36,7 @@ textarea:focus-visible {
   color-scheme: light;
 
   /* Colors are generated from the shared palette (single source of truth):
-     @kowloon/client/theme/palette.json -> theme-colors.generated.css (imported
+     @kowloon/design/tokens/palette.json -> theme-colors.generated.css (imported
      above). Edit the palette; `npm run gen:theme` regenerates (auto on dev/build). */
 
   /* Geometry — sharp, print-like, no pill shapes */

@@ -73,9 +73,11 @@ export const fetchThemesAsync = createAsyncThunk(
 
 // ── Fallback themes (shown before server responds or if fetch fails) ──────────
 // Exactly the three the app offers (System/Light/Dark). Colors are a literal
-// copy of @kowloon/client/theme/palette.json's light/dark maps, the single
+// copy of @kowloon/design/tokens/palette.json's light/dark maps, the single
 // source of truth shared with the mobile app. Keep in sync by hand if
-// palette.json changes; mirrors the same copy in server/routes/themes/index.js.
+// palette.json changes; mirrors the same copy in server/routes/themes/index.js
+// (a separate repo — not touched by this pass, worth checking next time
+// palette.json changes).
 
 const FALLBACK_THEMES = [
   { id: 'system', name: 'System', colorScheme: 'system', isBuiltIn: true, colors: null, postColors: null },
@@ -84,10 +86,9 @@ const FALLBACK_THEMES = [
     colors: {
       'base-100': '#ffffff', 'base-200': '#f4f4f4',
       'base-300': '#e7e7e7', 'base-content': '#1a1a20',
-      'field': '#fcfbf7',
       'primary': '#5588b1', 'primary-content': '#f4f5f7',
       'secondary': '#393b7a', 'secondary-content': '#faf4e8',
-      'accent': '#c0394a', 'accent-content': '#f7e8e8',
+      'accent': '#e75423', 'accent-content': '#1a1a20',
       'neutral': '#1a1a20', 'neutral-content': '#f4f4f4',
       'info': '#3c8db8', 'info-content': '#f0f6fa',
       'success': '#2f9956', 'success-content': '#f0f8f2',
@@ -101,10 +102,9 @@ const FALLBACK_THEMES = [
     colors: {
       'base-100': '#16171d', 'base-200': '#1f2129',
       'base-300': '#2c2f3a', 'base-content': '#f4f4f4',
-      'field': '#1f2129',
       'primary': '#5588b1', 'primary-content': '#0e1116',
       'secondary': '#393b7a', 'secondary-content': '#faf4e8',
-      'accent': '#c0394a', 'accent-content': '#f7e8e8',
+      'accent': '#e8987d', 'accent-content': '#1a1a20',
       'neutral': '#1f2129', 'neutral-content': '#f4f4f4',
       'info': '#3c8db8', 'info-content': '#f0f6fa',
       'success': '#2f9956', 'success-content': '#f0f8f2',
