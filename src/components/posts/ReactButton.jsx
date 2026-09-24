@@ -10,8 +10,7 @@
 // module-level). Shows a small popup of options above the button.
 
 import { useState, useEffect, useRef } from 'react'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faFaceSmile } from '@fortawesome/free-solid-svg-icons'
+import { Smile } from 'lucide-react'
 import { useClient } from '../../hooks/useClient'
 import { toast } from '../../app/toast'
 
@@ -161,11 +160,10 @@ export default function ReactButton({ post, t, onReacted }) {
         {myReact ? (
           <span className="text-base leading-none">{myReact}</span>
         ) : (
-          <FontAwesomeIcon icon={faFaceSmile} />
+          <Smile size={18} strokeWidth={1.75} />
         )}
-        {count > 0 && (
-          <span className="font-ui text-xs tracking-wider">{count}</span>
-        )}
+        {/* Count lives in PostReacts (feed) / ReactCounts (detail), not on
+            the button (#79) -- this used to duplicate it. */}
       </button>
 
       {open && (
@@ -174,7 +172,7 @@ export default function ReactButton({ post, t, onReacted }) {
           role="menu"
           aria-label={t('post.reactPickerLabel', { defaultValue: 'Choose a reaction' })}
           style={{ bottom: popupBottom }}
-          className="fixed left-[5px] right-[5px] flex flex-wrap justify-center gap-0 bg-base-100 border-2 border-primary shadow-lg z-40"
+          className="fixed left-[5px] right-[5px] flex flex-wrap justify-center gap-0 bg-base-100 border-2 border-primary z-40"
         >
           {emojis.map(({ emoji, name }) => {
             const active = emoji === myReact
