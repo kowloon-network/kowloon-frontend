@@ -1,4 +1,9 @@
 // Reply — single reply row with author edit/delete and a react button.
+//
+// Body is a `reading-surface` (kowloon-design/components/Reply.md) — reader-
+// controlled typography, same mechanism as PostBody's body/title. Previously
+// a fixed text-[13.5px]/leading-[1.45]/font-[450] override that never
+// respected the reader's chosen font, size, or line-spacing.
 
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -111,10 +116,12 @@ export default function Reply({ reply, onUpdated, onDeleted, showReply = false, 
           </form>
         ) : (
           html ? (
-            <div
-              className="prose prose-sm max-w-none text-[13.5px] [&_p]:leading-[1.45] [&_p]:font-[450] font-reading text-base-content/80"
-              dangerouslySetInnerHTML={{ __html: html }}
-            />
+            <div className="reading-surface">
+              <div
+                className="prose prose-sm max-w-none font-reading text-base-content/80"
+                dangerouslySetInnerHTML={{ __html: html }}
+              />
+            </div>
           ) : null
         )}
 
