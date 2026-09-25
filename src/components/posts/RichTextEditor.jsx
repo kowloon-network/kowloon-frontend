@@ -39,11 +39,11 @@ function ToolbarButton({ onClick, active, disabled = false, title, children }) {
       title={title}
       disabled={disabled}
       onMouseDown={(e) => { e.preventDefault(); if (!disabled) onClick() }}
-      className={`px-3 py-2.5 font-ui text-sm uppercase tracking-widest transition-colors flex items-center justify-center ${
+      className={`px-2.5 py-2 flex items-center justify-center transition-colors ${
         active
-          ? 'bg-primary text-primary-content'
-          : 'bg-base-200 text-base-content/70 hover:bg-base-300'
-      } ${disabled ? 'opacity-30 cursor-not-allowed hover:bg-base-200' : ''}`}
+          ? 'text-primary'
+          : 'text-base-content/60 hover:text-base-content'
+      } ${disabled ? 'opacity-30 cursor-not-allowed' : ''}`}
     >
       {children}
     </button>
@@ -84,9 +84,9 @@ export default function RichTextEditor({ content = '', onChange, maxWords, autoF
   const has = (b) => buttons.includes(b)
 
   return (
-    <div className="border-2 border-base-300">
+    <div>
       {/* Toolbar — wraps when the button set is wide so it never overflows. */}
-      <div className="flex flex-wrap gap-0 border-b-2 border-base-300 bg-base-200">
+      <div className="flex flex-wrap gap-0 border-b border-base-300">
         {has('undo') && (
           <ToolbarButton
             onClick={() => editor.chain().focus().undo().run()}

@@ -59,7 +59,7 @@ function ReplyReactScope({ audience, canReply, canReact, onChangeReply, onChange
   const [open, setOpen] = useState(false)
   const customized = canReply !== audience || canReact !== audience
   return (
-    <div className="px-4 py-3 border-t-2 border-base-300 bg-base-100">
+    <div className="px-4 py-3 border-t border-base-300 bg-base-100">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -104,7 +104,7 @@ function TagsInput({ tags, onChange }) {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 px-4 py-2 border-b-2 border-base-300 bg-base-100 min-h-10">
+    <div className="flex flex-wrap items-center gap-1.5 px-4 py-2 border-b border-base-300 bg-base-100 min-h-10">
       {tags.map((tag) => (
         <span key={tag} className="flex items-center gap-1 px-2 py-0.5 bg-base-200 font-ui text-xs uppercase tracking-widest">
           #{tag}
@@ -1044,7 +1044,7 @@ export default function PostComposer({
         {/* Header — the type is a dropdown ("Add New [Type] ▼"), like the app.
             This replaces the old tab row, which overflowed the mobile width and
             hid Event, making Events uncreatable. */}
-        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-base-300 bg-base-200 shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-base-300 shrink-0">
           <div className="relative">
             {/* lockType pins the post type — the menu never opens, so the
                 caller's initial type (e.g. Media) can't be switched away from. */}
@@ -1103,7 +1103,7 @@ export default function PostComposer({
 
           {/* Media file picker — shown first so adding a photo/clip is the first action */}
           {postType === 'Media' && (
-            <div className="border-b-2 border-base-300">
+            <div className="border-b border-base-300">
               {/* One single-type-accept button per media kind mediaAccept
                   includes — see the mediaKinds derivation above for why a
                   combined image+video accept isn't good enough on its own. */}
@@ -1150,7 +1150,7 @@ export default function PostComposer({
 
           {/* Link URL — first field for Link type, same size as title */}
           {postType === 'Link' && (
-            <div className={`flex items-center border-b-2 border-base-300 bg-base-100 ${fetchingMeta ? 'opacity-50' : ''}`}>
+            <div className={`flex items-center border-b border-base-300 bg-base-100 ${fetchingMeta ? 'opacity-50' : ''}`}>
               <input
                 ref={hrefInputRef}
                 type="url"
@@ -1184,7 +1184,7 @@ export default function PostComposer({
               from /preview as the URL is typed. The featured image (OG image or
               a repost's hero) is removable independently. */}
           {postType === 'Link' && (fetchingMeta || linkPreview || featuredImage) && (
-            <div className="flex gap-3 items-start p-3 border-b-2 border-base-300 bg-base-200">
+            <div className="flex gap-3 items-start p-3 border-b border-base-300 bg-base-200">
               {featuredImage ? (
                 <img src={featuredImage} alt="" className="w-20 h-20 object-cover shrink-0 bg-base-300" />
               ) : linkPreview?.image ? (
@@ -1230,13 +1230,13 @@ export default function PostComposer({
               placeholder={t('composer.title')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-3 bg-base-100 font-display text-2xl tracking-wide text-base-content placeholder:text-base-content/30 outline-none border-b-2 border-base-300"
+              className="w-full px-4 py-3 bg-base-100 font-display text-2xl tracking-wide text-base-content placeholder:text-base-content/30 outline-none border-b border-base-300"
             />
           )}
 
           {/* Article / Event featured image */}
           {(postType === 'Article' || postType === 'Event') && (
-            <div className="border-b-2 border-base-300">
+            <div className="border-b border-base-300">
               {artFeaturedPreview ? (
                 <div className="relative">
                   <img src={artFeaturedPreview} alt="" className="w-full max-h-48 object-cover" />
@@ -1266,7 +1266,7 @@ export default function PostComposer({
           {/* Event datetimes + location */}
           {postType === 'Event' && (
             <>
-              <div className="flex border-b-2 border-base-300">
+              <div className="flex border-b border-base-300">
                 <DateTimeField
                   dateValue={startDatePart}
                   timeValue={startTimePart}
@@ -1358,7 +1358,7 @@ export default function PostComposer({
         </div>
 
         {/* Footer — pinned to bottom, never scrolls away */}
-        <div className="flex items-center justify-between gap-3 px-3 py-2 bg-base-200 border-t-2 border-base-300 shrink-0">
+        <div className="flex items-center justify-between gap-3 px-3 py-2 border-t border-base-300 shrink-0">
           <CircleSelector circles={myCircles} groups={joinedGroups} value={audience} onChange={(v) => { setAudience(v); setCanReply(v); setCanReact(v) }} showAudience allowCreate direction="up" constrain={initialValues.constrain} />
           <div className="flex items-center gap-3">
             {error && <span role="alert" aria-live="assertive" className="font-ui text-xs uppercase tracking-widest text-error">{error}</span>}
