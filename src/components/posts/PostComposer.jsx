@@ -11,7 +11,6 @@ import FocusTrap from 'focus-trap-react'
 import { Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
-import MediaIcon from '../../assets/icons/post-media.svg?react'
 import PostTypeIcon from '../ui/PostTypeIcon'
 import { useClient } from '../../hooks/useClient'
 import { useDraft } from '../../hooks/useDraft'
@@ -1056,7 +1055,6 @@ export default function PostComposer({
               aria-expanded={typeMenuOpen}
               className="flex items-center gap-2 font-display text-xl tracking-wide disabled:cursor-default"
             >
-              <PostTypeIcon type={postType} size="sm" />
               {t('composer.addNew', { defaultValue: 'Add New' })}{' '}
               <span style={{ color: POST_TYPES[postType]?.color }}>
                 {t(`postTypes.${postType}`, { defaultValue: postType })}
@@ -1253,9 +1251,9 @@ export default function PostComposer({
                 <button
                   type="button"
                   onClick={() => artImageInputRef.current?.click()}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 font-ui text-xs uppercase tracking-widest text-base-content/40 hover:text-base-content hover:bg-base-200 transition-colors"
+                  className="w-full flex items-center gap-2 px-4 py-2.5 font-ui text-xs uppercase tracking-widest text-base-content/40 hover:text-base-content transition-colors"
                 >
-                  <MediaIcon className="w-3 h-3" />
+                  <span aria-hidden="true">+</span>
                   {t('composer.addFeaturedImage', { defaultValue: 'Add featured image' })}
                 </button>
               )}
