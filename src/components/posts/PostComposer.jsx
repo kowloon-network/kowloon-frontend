@@ -3,7 +3,7 @@
 // Expanded: modal overlay with type selector, rich text editor, audience picker, submit/cancel.
 // Auth-aware: renders nothing if not logged in.
 
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { sortByPins } from '@kowloon/client'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -22,7 +22,7 @@ import CircleSelector from '../circles/CircleSelector'
 import { useJoinedGroups } from '../../hooks/useJoinedGroups'
 import LocationField from './LocationField'
 import AudioPlayer from '../ui/AudioPlayer'
-import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, X, Check, Image as ImageIcon } from 'lucide-react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faImage, faVideo, faMusic, faGripVertical } from '@fortawesome/free-solid-svg-icons'
 import {
@@ -416,6 +416,16 @@ export default function PostComposer({
   )
   const artImageInputRef = useRef(null)
   const hrefInputRef     = useRef(null)
+  const titleInputRef    = useRef(null)
+  // Live TipTap instance, set by RichTextEditor -- lets us focus the body
+  // programmatically (switching to Note mid-session, Media's first
+  // attachment) the same way mobile calls editor.focus().
+  const editorInstanceRef = useRef(null)
+  // Guards the Media auto-focus so it fires once per *transition* into having
+  // attachments, not on every render while they're present (mirrors mobile's
+  // mediaFocusedRef).
+  const mediaFocusedRef = useRef(false)
+  const handleEditorReady = useCallback((ed) => { editorInstanceRef.current = ed }, [])
   // The href we've already auto-filled title/featured/body from, so a later
   // re-fetch never re-injects what the user has since edited or deleted.
   const autoFilledHrefRef = useRef(null)
@@ -464,8 +474,18 @@ export default function PostComposer({
       }
     }
     setPostType(newType)
+    // Focus the field the user actually needs next -- matches mobile.
+    // Note/Media aren't handled here: Note's body autofocuses via
+    // RichTextEditor's own `autofocus` re-mount when its key changes, and
+    // relies on the effect below when it doesn't; Media focuses its body only
+    // once an attachment is picked (see the effect below), not on entry --
+    // the media picker is the first action there, not typing.
     if (newType === 'Link') {
       setTimeout(() => hrefInputRef.current?.focus(), 0)
+    } else if (newType === 'Article' || newType === 'Event') {
+      setTimeout(() => titleInputRef.current?.focus(), 0)
+    } else if (newType === 'Note') {
+      setTimeout(() => editorInstanceRef.current?.commands.focus('end'), 0)
     }
   }
 
@@ -626,6 +646,20 @@ export default function PostComposer({
     // every render -- the ref guard above already makes re-runs a no-op.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpenFilePicker, postType, expanded, attachments.length])
+
+  // Focus the body once a Media post has its first attachment -- picking
+  // media is the obvious first step there, not typing, so autofocusing the
+  // body on entry (like Note) would just compete with the file picker for
+  // attention. Matches mobile's mediaFocusedRef effect exactly.
+  useEffect(() => {
+    if (postType !== 'Media') {
+      mediaFocusedRef.current = false
+      return
+    }
+    if (mediaFocusedRef.current || attachments.length === 0) return
+    mediaFocusedRef.current = true
+    editorInstanceRef.current?.commands.focus('end')
+  }, [postType, attachments.length])
 
   const handleCancel = () => {
     draft.clear()
@@ -1087,13 +1121,28 @@ export default function PostComposer({
               </ul>
             )}
           </div>
-          <button
-            onClick={handleCancel}
-            aria-label={t('composer.close')}
-            className="px-4 py-2 font-ui text-xs uppercase tracking-widest text-base-content/50 hover:text-base-content transition-colors"
-          >
-            ✕
-          </button>
+          {/* Cancel (X) / Post (check) — icon buttons, matching mobile. Moved
+              up here from the footer so they're reachable without scrolling. */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={submitting}
+              aria-label={t('composer.close')}
+              className="p-2 text-base-content/50 hover:text-base-content disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!canPost}
+              aria-label={t('composer.post')}
+              className={`p-2 text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-opacity ${submitting ? 'opacity-50' : ''}`}
+            >
+              <Check size={20} strokeWidth={2.5} />
+            </button>
+          </div>
         </div>
 
         {/* Scrollable body — min-h-0 is required for flex children to shrink correctly */}
@@ -1158,6 +1207,7 @@ export default function PostComposer({
                 onChange={(e) => setHref(e.target.value)}
                 onPaste={handleHrefPaste}
                 onBlur={() => fetchLinkMeta(href)}
+                autoFocus={postType === 'Link' && !initialValues.href}
                 disabled={!!initialValues.href}
                 className={`flex-1 px-4 py-3 bg-transparent font-display text-2xl tracking-wide text-base-content placeholder:text-base-content/30 outline-none min-w-0 ${initialValues.href ? 'opacity-60 cursor-not-allowed' : ''}`}
               />
@@ -1223,42 +1273,37 @@ export default function PostComposer({
           {/* Title — Article, Event, Link, Media */}
           {hasTitle && (
             <input
+              ref={titleInputRef}
               type="text"
               aria-label={t('composer.titleLabel')}
               placeholder={t('composer.title')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              autoFocus={postType === 'Article' || postType === 'Event'}
               className="w-full px-4 py-3 bg-base-100 font-display text-2xl tracking-wide text-base-content placeholder:text-base-content/30 outline-none border-b border-base-300"
             />
           )}
 
-          {/* Article / Event featured image */}
-          {(postType === 'Article' || postType === 'Event') && (
+          {/* Article / Event featured image — the "add" trigger lives as an
+              icon on the sticky footer below (matches mobile); this only
+              renders the preview once one's actually picked. */}
+          {(postType === 'Article' || postType === 'Event') && artFeaturedPreview && (
             <div className="border-b border-base-300">
-              {artFeaturedPreview ? (
-                <div className="relative">
-                  <img src={artFeaturedPreview} alt="" className="w-full max-h-48 object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => { URL.revokeObjectURL(artFeaturedPreview); setArtFeaturedPreview(null); setArtFeaturedFile(null) }}
-                    aria-label={t('composer.removeFeaturedImage', { defaultValue: 'Remove image' })}
-                    className="absolute top-2 right-2 px-2 py-1 bg-black/50 text-white font-ui text-xs uppercase tracking-widest hover:bg-black/70 transition-colors"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ) : (
+              <div className="relative">
+                <img src={artFeaturedPreview} alt="" className="w-full max-h-48 object-cover" />
                 <button
                   type="button"
-                  onClick={() => artImageInputRef.current?.click()}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 font-ui text-xs uppercase tracking-widest text-base-content/40 hover:text-base-content transition-colors"
+                  onClick={() => { URL.revokeObjectURL(artFeaturedPreview); setArtFeaturedPreview(null); setArtFeaturedFile(null) }}
+                  aria-label={t('composer.removeFeaturedImage', { defaultValue: 'Remove image' })}
+                  className="absolute top-1.5 right-1.5 flex items-center justify-center w-6 h-6 rounded-full bg-black/65 text-white hover:bg-black/80 transition-colors"
                 >
-                  <span aria-hidden="true">+</span>
-                  {t('composer.addFeaturedImage', { defaultValue: 'Add featured image' })}
+                  <X size={14} strokeWidth={2.5} />
                 </button>
-              )}
-              <input ref={artImageInputRef} type="file" accept="image/*" className="hidden" onChange={handleArtImageFile} />
+              </div>
             </div>
+          )}
+          {(postType === 'Article' || postType === 'Event') && (
+            <input ref={artImageInputRef} type="file" accept="image/*" className="hidden" onChange={handleArtImageFile} />
           )}
 
           {/* Event datetimes + location */}
@@ -1322,6 +1367,7 @@ export default function PostComposer({
             // those out of view.
             autoFocus={postType === 'Note'}
             editorClassName="min-h-[40vh]"
+            onEditorReady={handleEditorReady}
           />
 
           {/* Tags */}
@@ -1355,7 +1401,13 @@ export default function PostComposer({
 
         </div>
 
-        {/* Footer — pinned to bottom, never scrolls away */}
+        {/* Footer — pinned to bottom, never scrolls away. Cancel/Post moved to
+            the header (X / check); this bar now carries just audience +
+            status + the featured-image trigger, matching mobile's icon-only
+            sticky bar. Location stays in its own row above (it's a rich
+            search field on web, not a single icon like mobile's tap-to-open-
+            sheet -- collapsing it to an icon here would be a real usability
+            regression on desktop, not a parity win). */}
         <div className="flex items-center justify-between gap-3 px-3 py-2 border-t border-base-300 shrink-0">
           <CircleSelector circles={myCircles} groups={joinedGroups} value={audience} onChange={(v) => { setAudience(v); setCanReply(v); setCanReact(v) }} showAudience allowCreate direction="up" constrain={initialValues.constrain} />
           <div className="flex items-center gap-3">
@@ -1365,14 +1417,16 @@ export default function PostComposer({
                 {t('composer.wordCount', { count: wordCount, max: NOTE_MAX_WORDS })}
               </span>
             )}
-            <button type="button" onClick={handleCancel}
-              className="px-3 py-1.5 font-ui text-xs uppercase tracking-widest text-base-content/50 hover:text-base-content transition-colors">
-              {t('common.cancel')}
-            </button>
-            <button type="button" onClick={handleSubmit} disabled={!canPost}
-              className="px-4 py-1.5 font-ui text-xs uppercase tracking-widest bg-primary text-primary-content hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity">
-              {submitting ? t('composer.posting') : t('composer.post')}
-            </button>
+            {(postType === 'Article' || postType === 'Event') && (
+              <button
+                type="button"
+                onClick={() => artImageInputRef.current?.click()}
+                aria-label={t('composer.addFeaturedImage', { defaultValue: 'Add featured image' })}
+                className={`p-2 transition-colors ${artFeaturedPreview ? 'text-primary' : 'text-base-content/50 hover:text-base-content'}`}
+              >
+                <ImageIcon size={18} />
+              </button>
+            )}
           </div>
         </div>
 

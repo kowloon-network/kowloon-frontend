@@ -1,7 +1,7 @@
 // RichTextEditor — TipTap WYSIWYG editor with Markdown output.
 // Props: content (Markdown string), onChange, maxWords, autoFocus, editorClassName, postType
 
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -50,7 +50,7 @@ function ToolbarButton({ onClick, active, disabled = false, title, children }) {
   )
 }
 
-export default function RichTextEditor({ content = '', onChange, maxWords, autoFocus = false, editorClassName = '', postType = 'Note' }) {
+export default function RichTextEditor({ content = '', onChange, maxWords, autoFocus = false, editorClassName = '', postType = 'Note', onEditorReady = null }) {
   const { t } = useTranslation()
   const lastValidDoc = useRef(null)
 
@@ -77,6 +77,15 @@ export default function RichTextEditor({ content = '', onChange, maxWords, autoF
       onChange?.(md)
     },
   })
+
+  // Exposes the live TipTap instance to the parent (PostComposer) so it can
+  // programmatically focus the body -- e.g. switching to Note mid-session, or
+  // once a Media post's first attachment is picked -- matching mobile's
+  // editor.focus() calls, which TipTap's own `autofocus` config can't cover
+  // since that only applies once at editor creation, not on later prop changes.
+  useEffect(() => {
+    onEditorReady?.(editor)
+  }, [editor, onEditorReady])
 
   if (!editor) return null
 
