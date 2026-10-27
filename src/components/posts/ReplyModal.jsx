@@ -9,6 +9,7 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { X, ArrowUpRight } from 'lucide-react'
 import { useClient } from '../../hooks/useClient'
@@ -22,6 +23,7 @@ import { buildReplyTree } from '../../lib/replyTree'
 export default function ReplyModal({ post, open, onClose, onReplied }) {
   const { t } = useTranslation()
   const client = useClient()
+  const user = useSelector((state) => state.auth.user)
   const [replies, setReplies] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -59,14 +61,58 @@ export default function ReplyModal({ post, open, onClose, onReplied }) {
     }
   }, [open, onClose])
 
-  const handleSubmitted = useCallback(async ({ duplicated } = {}) => {
+  // Reconcile with the server WITHOUT a full load() (that would flip `loading`
+  // and jank the list). The read path lags the write, so a just-posted reply
+  // may not be queryable yet (#66, same gap PostPage.jsx already handles) --
+  // keep any still-pending optimistic reply the server list doesn't yet
+  // contain, matched by author + raw content.
+  const reconcileReplies = useCallback(async () => {
+    if (!client || !post?.id) return
+    try {
+      const res = await client.feeds.getReplies({ postId: post.id })
+      const server = res?.orderedItems ?? []
+      const contentOf = (r) => {
+        const raw = r?.source?.content
+        if (typeof raw === 'string' && raw.length) return raw.trim()
+        return String(r?.body || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
+      }
+      setReplies((prev) => {
+        const seen = new Set(server.map((r) => `${r.actorId}|${contentOf(r)}`))
+        const stillPending = prev.filter(
+          (r) => r.__optimistic && !seen.has(`${r.actorId}|${contentOf(r)}`),
+        )
+        return [...server, ...stillPending]
+      })
+    } catch {
+      // keep the existing replies on a transient error
+    }
+  }, [client, post?.id])
+
+  const handleSubmitted = useCallback(({ duplicated, content, inReplyTo } = {}) => {
+    if (duplicated) return
     if (!duplicated) onReplied?.({ delta: 1 })
-    await load()
-    // Scroll the list to the bottom so the user sees their new reply
+    const optimistic = {
+      id: `pending-${Date.now()}`,
+      __optimistic: true,
+      actorId: user?.id,
+      actor: {
+        id: user?.id,
+        name: user?.profile?.name ?? user?.name,
+        icon: user?.profile?.icon ?? user?.icon,
+      },
+      target: post?.id,
+      parent: inReplyTo ?? post?.id,
+      source: { content },
+      body: '',
+      publishedAt: new Date().toISOString(),
+    }
+    setReplies((arr) => [...arr, optimistic])
     requestAnimationFrame(() => {
       if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
     })
-  }, [load, onReplied])
+    setTimeout(() => reconcileReplies(), 800)
+    setTimeout(() => reconcileReplies(), 2500)
+  }, [user, post?.id, onReplied, reconcileReplies])
 
   const updateReply = (next) => setReplies((arr) => arr.map((r) => (r.id === next.id ? next : r)))
   const removeReply = (id) => {
