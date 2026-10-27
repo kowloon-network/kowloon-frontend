@@ -528,7 +528,15 @@ export default function PostComposer({
     const vv = window.visualViewport
     const updateKeyboard = () => {
       if (!vv) return
-      setKeyboardHeight(Math.max(0, window.innerHeight - vv.height - vv.offsetTop))
+      // Keyboard height is the shrink in visual-viewport height alone.
+      // vv.offsetTop tracks how far the visual viewport has scrolled relative
+      // to the layout viewport (e.g. the page auto-scrolling a focused input
+      // into view) -- subtracting it too double-counts that scroll as extra
+      // keyboard height, inflating this value and leaving a gap between the
+      // modal's bottom edge and the real keyboard (the page behind it shows
+      // through). Keyboard show/hide commonly coincides with that auto-scroll,
+      // which is why this was intermittent rather than constant.
+      setKeyboardHeight(Math.max(0, window.innerHeight - vv.height))
     }
     vv?.addEventListener('resize', updateKeyboard)
     updateKeyboard()
