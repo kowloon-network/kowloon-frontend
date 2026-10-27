@@ -6,7 +6,6 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import PostMeta from './PostMeta'
 import PostToolbar from './PostToolbar'
-import PostTypeIcon from '../ui/PostTypeIcon'
 import VisibilityIcon from '../ui/VisibilityIcon'
 import { POST_TYPES } from '../../lib/postTypes'
 
@@ -109,10 +108,10 @@ export default function EventCard({ post, showFull = false }) {
         </>
       )}
 
-      {/* Footer */}
+      {/* Footer -- #65: PostTypeIcon removed, redundant with PostMeta's
+          colored type label above; same fix as PostCard.jsx. */}
       <div className="flex items-center gap-3 pt-2">
         <VisibilityIcon visibility={post?.visibility} />
-        <PostTypeIcon type="Event" size="sm" />
         <PostToolbar post={post} />
       </div>
 
