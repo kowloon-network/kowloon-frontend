@@ -388,6 +388,8 @@ export default function CirclePage() {
   const isSystem = circle.type === 'System'
   // System-managed circles (Blocked/Muted/Groups) skip the friendly finder nudge.
   const isSystemManaged = isSystem && ['Blocked', 'Muted', 'Groups'].includes(circle.name)
+  const isBlockedCircle = isSystem && circle.name === 'Blocked'
+  const isMutedCircle = isSystem && circle.name === 'Muted'
   const showFinder = isOwner && members.length === 0 && !isSystemManaged
   const currentIcon = editing ? editIconPreview : circle.icon
 
@@ -465,19 +467,32 @@ export default function CirclePage() {
             ) : null}
 
             {editing ? (
-              <div className="flex items-center gap-3">
-                <label className="font-ui text-xs uppercase tracking-widest text-base-content/60">
-                  {t('circle.visibility', { defaultValue: 'Visibility' })}
-                </label>
-                <select
-                  value={editTo}
-                  onChange={(e) => setEditTo(e.target.value)}
-                  className="bg-base-200 border border-base-300 px-3 py-1.5 font-ui text-xs focus:outline-none focus:border-primary"
-                >
-                  {visibilityOptions.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-3">
+                  <label className="font-ui text-xs uppercase tracking-widest text-base-content/60">
+                    {t('circle.visibility', { defaultValue: 'Visibility' })}
+                  </label>
+                  <select
+                    value={editTo}
+                    onChange={(e) => setEditTo(e.target.value)}
+                    className="bg-base-200 border border-base-300 px-3 py-1.5 font-ui text-xs focus:outline-none focus:border-primary"
+                  >
+                    {visibilityOptions.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+                {(isBlockedCircle || isMutedCircle) && editTo === '@public' && (
+                  <p className="font-ui text-xs text-base-content/60 max-w-md">
+                    {isBlockedCircle
+                      ? t('circle.publicBlockedWarning', {
+                          defaultValue: "This isn't a display setting — anyone, including the people and servers on this list, will be able to browse who you've blocked. Some people use a public blocklist on purpose, as a community-defense signal. Private by default; you're choosing to share it.",
+                        })
+                      : t('circle.publicMutedWarning', {
+                          defaultValue: "This isn't a display setting — anyone will be able to browse who you've muted. Private by default; you're choosing to share it.",
+                        })}
+                  </p>
+                )}
               </div>
             ) : null}
 
