@@ -232,31 +232,54 @@ function DateTimeField({ dateValue, timeValue, onDateChange, onTimeChange, place
 
 // ── Attachment row (Media type) ────────────────────────────────────────────
 
-function AttachmentPreview({ att }) {
+function AttachmentPreview({ att, uploadProgress }) {
   const mt = att.file.type
   if (mt.startsWith('image/')) {
     return (
-      <img
-        src={att.previewUrl}
-        alt=""
-        className="w-20 h-20 object-cover shrink-0 bg-base-300"
-      />
+      <div className="relative shrink-0">
+        <img
+          src={att.previewUrl}
+          alt=""
+          className="w-20 h-20 object-cover bg-base-300"
+        />
+        <UploadProgressBar percent={uploadProgress} />
+      </div>
     )
   }
   if (mt.startsWith('video/')) {
     return (
-      <video
-        src={att.previewUrl}
-        className="w-20 h-20 object-cover shrink-0 bg-black"
-        muted
-        preload="metadata"
-      />
+      <div className="relative shrink-0">
+        <video
+          src={att.previewUrl}
+          className="w-20 h-20 object-cover bg-black"
+          muted
+          preload="metadata"
+        />
+        <UploadProgressBar percent={uploadProgress} />
+      </div>
     )
   }
   if (mt.startsWith('audio/')) {
-    return <AudioPlayer src={att.previewUrl} className="w-20 h-20" />
+    return (
+      <div className="relative">
+        <AudioPlayer src={att.previewUrl} className="w-20 h-20" />
+        <UploadProgressBar percent={uploadProgress} />
+      </div>
+    )
   }
   return null
+}
+
+// Thin progress bar along the bottom edge of a thumbnail while its upload is
+// in flight (#69) -- undefined/null means "not uploading", 0-99 shows the bar,
+// 100 (or missing) clears it once handleSubmit moves on to creating the post.
+function UploadProgressBar({ percent }) {
+  if (percent == null || percent >= 100) return null
+  return (
+    <div className="absolute inset-x-0 bottom-0 h-1 bg-black/30">
+      <div className="h-full bg-primary transition-[width]" style={{ width: `${percent}%` }} />
+    </div>
+  )
 }
 
 function SortableAttachmentRow(props) {
@@ -269,12 +292,17 @@ function SortableAttachmentRow(props) {
   }
   return (
     <div ref={setNodeRef} style={style}>
-      <AttachmentRow {...props} dragHandleProps={{ ...attributes, ...listeners }} uploadError={props.uploadErrors?.[props.att.previewUrl]} />
+      <AttachmentRow
+        {...props}
+        dragHandleProps={{ ...attributes, ...listeners }}
+        uploadError={props.uploadErrors?.[props.att.previewUrl]}
+        uploadProgress={props.uploadProgress?.[props.att.previewUrl]}
+      />
     </div>
   )
 }
 
-function AttachmentRow({ att, index, onUpdate, onRemove, dragHandleProps = {}, uploadError }) {
+function AttachmentRow({ att, index, onUpdate, onRemove, dragHandleProps = {}, uploadError, uploadProgress }) {
   const { t } = useTranslation()
   const isAudio = att.file.type.startsWith('audio/')
   return (
@@ -289,9 +317,9 @@ function AttachmentRow({ att, index, onUpdate, onRemove, dragHandleProps = {}, u
       >
         <FontAwesomeIcon icon={faGripVertical} />
       </button>
-      {!isAudio && <AttachmentPreview att={att} />}
+      {!isAudio && <AttachmentPreview att={att} uploadProgress={uploadProgress} />}
       <div className="flex flex-col gap-2.5 flex-1 min-w-0">
-        {isAudio && <AttachmentPreview att={att} />}
+        {isAudio && <AttachmentPreview att={att} uploadProgress={uploadProgress} />}
         <input
           type="text"
           value={att.title}
@@ -367,6 +395,7 @@ export default function PostComposer({
   const [artFeaturedFile, setArtFeaturedFile]       = useState(null)    // File for Article featured image
   const [artFeaturedPreview, setArtFeaturedPreview] = useState(null)    // object URL preview
   const [uploadErrors, setUploadErrors] = useState({}) // previewUrl → error string
+  const [uploadProgress, setUploadProgress] = useState({}) // previewUrl → percent (#69)
   const [target, setTarget]           = useState(initialValues.target ?? null) // ID of post being shared
   const [geo, setGeo]                 = useState(null) // { lat, lon } from browser
   const [locating, setLocating]       = useState(false)
@@ -690,6 +719,7 @@ export default function PostComposer({
     if (artFeaturedPreview) { URL.revokeObjectURL(artFeaturedPreview); setArtFeaturedPreview(null) }
     setArtFeaturedFile(null)
     setUploadErrors({})
+    setUploadProgress({})
     setTarget(null)
     setPostType('Note')
     setTypeMenuOpen(false)
@@ -869,6 +899,7 @@ export default function PostComposer({
     setSubmitting(true)
     setError(null)
     setUploadErrors({})
+    setUploadProgress({})
     // Reuse the same dedupeKey across retries of the same content. The
     // signature covers every user-visible field; changing any of them is a
     // "different post" and gets a fresh key. Attachment file names are
@@ -909,6 +940,8 @@ export default function PostComposer({
               title: att.title || undefined,
               summary: att.alt || undefined,
               to: audience,
+              onProgress: ({ percent }) =>
+                setUploadProgress((prev) => ({ ...prev, [att.previewUrl]: percent })),
             })
           )
         )
@@ -1183,7 +1216,7 @@ export default function PostComposer({
                       {attachments.map((att, i) => (
                         <SortableAttachmentRow key={att.previewUrl} att={att} index={i}
                           onUpdate={updateAttachment} onRemove={removeAttachment}
-                          uploadErrors={uploadErrors} />
+                          uploadErrors={uploadErrors} uploadProgress={uploadProgress} />
                       ))}
                     </SortableContext>
                   </DndContext>
