@@ -62,7 +62,7 @@ function notificationRoute(notif) {
   }
   // Fallback: the server-generated href, reduced to a same-origin relative path.
   if (typeof notif?.href === 'string') {
-    const rel = notif.href.replace(/^https?:\/\/[^/]+/, '')
+    const rel = notif.href.replace(/^[a-z][a-z0-9+.-]*:\/\/[^/]+/i, '')
     if (rel.startsWith('/')) return rel
   }
   return null
@@ -85,7 +85,7 @@ function NotifBody({ notif, onMarkRead }) {
   // summary is e.g. "Miles Ahead reacted to your post" — we link the actor name portion
   const actorName = notif.actorName || notif.actorId
   const restOfSummary = notif.summary?.replace(actorName, '').trim()
-  const href = typeof notif.href === 'string' ? notif.href.replace(/^https?:\/\/[^/]+/, '') : null
+  const href = typeof notif.href === 'string' ? notif.href.replace(/^[a-z][a-z0-9+.-]*:\/\/[^/]+/i, '') : null
 
   return (
     <p className="font-ui text-sm text-base-content/80 leading-snug">
