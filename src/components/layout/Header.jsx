@@ -245,6 +245,16 @@ export function Header() {
                   {userHandle}
                 </li>
                 <li>
+                  {/* #67: "Profile & Settings" below is the EDIT form
+                      (ProfilePage.jsx) -- it never shows what a stranger
+                      actually sees. This is the one link to that public
+                      view, same /users/:id route anyone else's profile
+                      link points at. */}
+                  <Link to={`/users/${encodeURIComponent(userHandle)}`} className="block px-4 py-3 font-ui text-xs uppercase tracking-widest text-base-content/70 dark:text-white/95 hover:text-primary hover:bg-base-200 dark:hover:bg-base-200 transition-colors">
+                    {t('nav.viewProfile', { defaultValue: 'View Profile' })}
+                  </Link>
+                </li>
+                <li>
                   <Link to="/profile" className="block px-4 py-3 font-ui text-xs uppercase tracking-widest text-base-content/70 dark:text-white/95 hover:text-primary hover:bg-base-200 dark:hover:bg-base-200 transition-colors">
                     {t('nav.profile')}
                   </Link>
