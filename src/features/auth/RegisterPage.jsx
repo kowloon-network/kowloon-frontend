@@ -46,6 +46,7 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [inviteCode, setInviteCode]         = useState(searchParams.get('invite') || '')
   const [acknowledged, setAcknowledged]     = useState({}) // { [ruleId]: true }
+  const [acceptTerms, setAcceptTerms]       = useState(false)
   const [localError, setLocalError]         = useState('')
 
   const allRulesAcked = rules.every((r) => acknowledged[r.id])
@@ -75,6 +76,10 @@ export default function RegisterPage() {
       setLocalError(t('auth.mustAcknowledgeRules', { defaultValue: 'Please acknowledge every server rule before registering.' }))
       return
     }
+    if (!acceptTerms) {
+      setLocalError(t('auth.mustAcceptTerms', { defaultValue: 'Please accept the Terms of Service and Privacy Policy.' }))
+      return
+    }
     // Username becomes the account handle (@user@domain) — must be a slug.
     if (!/^[a-z0-9_]{2,32}$/.test(username.trim())) {
       setLocalError(t('auth.usernameInvalid', { defaultValue: 'Username must be 2–32 characters: lowercase letters, numbers, or underscores only (no spaces or capitals). Put your full name in the display name.' }))
@@ -88,6 +93,7 @@ export default function RegisterPage() {
       profile: displayName.trim() ? { name: displayName.trim() } : undefined,
       inviteCode: inviteCode.trim() || undefined,
       acknowledgedRules: rules.length > 0 ? rules.map((r) => r.id) : undefined,
+      acceptTerms,
     }))
   }
 
@@ -322,9 +328,44 @@ export default function RegisterPage() {
               </fieldset>
             )}
 
+            {/* Legal agreement. Distinct from the community rules above: those
+                are behavioural, this is the agreement with the server
+                operator, and the server records it (User.acceptedTerms). */}
+            <div className="mt-2 border-t border-base-300 pt-5">
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="accept-terms"
+                  checked={acceptTerms}
+                  onChange={() => setAcceptTerms((v) => !v)}
+                  className="mt-1.5 w-4 h-4 accent-primary cursor-pointer shrink-0"
+                />
+                <label htmlFor="accept-terms" className="font-reading text-sm text-base-content cursor-pointer flex-1">
+                  {t('auth.acceptTermsPrefix', { defaultValue: 'I have read and agree to the' })}{' '}
+                  <a
+                    href={`${serverUrl.trim() || ''}/pages/terms`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline"
+                  >
+                    {t('auth.termsOfService', { defaultValue: 'Terms of Service' })}
+                  </a>{' '}
+                  {t('common.and', { defaultValue: 'and' })}{' '}
+                  <a
+                    href={`${serverUrl.trim() || ''}/pages/privacy`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline"
+                  >
+                    {t('auth.privacyPolicy', { defaultValue: 'Privacy Policy' })}
+                  </a>.
+                </label>
+              </div>
+            </div>
+
             <button
               type="submit"
-              disabled={isLoading || (rules.length > 0 && !allRulesAcked)}
+              disabled={isLoading || (rules.length > 0 && !allRulesAcked) || !acceptTerms}
               className="mt-3 w-full py-3 bg-primary text-primary-content font-ui text-xs uppercase tracking-widest hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
             >
               {isLoading
