@@ -41,7 +41,7 @@ export default function Layout() {
       </a>
       <Header />
       <div className="flex-1 overflow-hidden lg:px-4">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 h-full">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 h-full">
           <div className="hidden lg:block lg:col-span-3 overflow-y-auto py-6"><Sidebar /></div>
           <main id="main-content" className="col-span-1 lg:col-span-6 px-5 lg:px-8 overflow-y-auto py-5 lg:py-6"><AppErrorBoundary><Outlet /></AppErrorBoundary><Footer /></main>
           <div className="hidden lg:block lg:col-span-3 overflow-y-auto py-6"><RightSidebar /></div>

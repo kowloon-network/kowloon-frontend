@@ -1097,9 +1097,12 @@ export default function PostComposer({
               />
 
       {/* Panel — full-screen on mobile (like the app). At the lg: breakpoint,
-          constrained to the same 6/12 grid column as the main content in
-          Layout.jsx (col-start-4/col-span-6 of the same 12-col + gap-10 + px-4
-          grid), so it lines up with the reading column instead of the sidebars.
+          constrained to the same 6/12 grid column as the main content
+          (col-start-4/col-span-6 of the same 12-col + gap-16 + px-4 grid), so
+          it lines up with the reading column instead of the sidebars. The gap
+          MUST match the layout shells -- Layout.jsx and PublicLayout.jsx are
+          both gap-16; they disagreed (gap-10 vs gap-16) until 2026-11, which
+          is the kind of drift that silently misaligns this overlay.
           pointer-events-none on the grid wrapper lets clicks in the exposed
           gutters fall through to the backdrop's onClick={handleCancel}. */}
       <div className="relative flex-1 min-h-0 lg:px-4 pointer-events-none">
