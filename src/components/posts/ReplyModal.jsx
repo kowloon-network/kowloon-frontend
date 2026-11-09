@@ -8,6 +8,7 @@
 // only — so threading works identically here and on /posts/:id.
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
+import FocusTrap from 'focus-trap-react'
 import { Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
@@ -29,6 +30,8 @@ export default function ReplyModal({ post, open, onClose, onReplied }) {
   const [error, setError] = useState(null)
   const [openReplyId, setOpenReplyId] = useState(null)
   const listRef = useRef(null)
+  const closeRef = useRef(null)
+  const panelRef = useRef(null)
 
   const load = useCallback(async () => {
     if (!client || !post?.id) return
@@ -129,8 +132,20 @@ export default function ReplyModal({ post, open, onClose, onReplied }) {
   const author = post?.actor ?? {}
   const postUrl = post?.id ? `/posts/${encodeURIComponent(post.id)}` : null
 
+  // Focus trap (same lib as PostComposer): Tab stays inside the dialog, focus
+  // starts on Close and returns to the opener on unmount. Escape is handled
+  // by our own keydown listener above.
   return (
-    <>
+    <FocusTrap
+      focusTrapOptions={{
+        escapeDeactivates: false,
+        allowOutsideClick: true,
+        initialFocus: () => closeRef.current ?? panelRef.current,
+        fallbackFocus: () => panelRef.current,
+        returnFocusOnDeactivate: true,
+      }}
+    >
+    <div>
       {/* Backdrop */}
       <div
         onClick={onClose}
@@ -139,6 +154,8 @@ export default function ReplyModal({ post, open, onClose, onReplied }) {
       />
       {/* Panel */}
       <div
+        ref={panelRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={t('post.repliesModal', { defaultValue: 'Replies' })}
@@ -167,6 +184,7 @@ export default function ReplyModal({ post, open, onClose, onReplied }) {
             </Link>
           )}
           <button
+            ref={closeRef}
             type="button"
             onClick={onClose}
             aria-label={t('common.close', { defaultValue: 'Close' })}
@@ -247,6 +265,7 @@ export default function ReplyModal({ post, open, onClose, onReplied }) {
           />
         </div>
       </div>
-    </>
+    </div>
+    </FocusTrap>
   )
 }

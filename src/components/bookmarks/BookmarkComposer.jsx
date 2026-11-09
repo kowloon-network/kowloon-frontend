@@ -10,7 +10,7 @@ import { useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { X, FolderPlus, Folder } from 'lucide-react'
 import { useClient } from '../../hooks/useClient'
-import RichTextEditor from '../posts/RichTextEditor'
+import RichTextEditor from '../posts/LazyRichTextEditor'
 import { toast } from '../../app/toast'
 
 const VISIBILITY_OPTIONS = [

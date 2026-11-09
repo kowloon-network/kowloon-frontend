@@ -31,9 +31,9 @@ import { TypographyProvider } from '../lib/TypographyProvider'
 // remaining override this doesn't cover (a logged-in user's own saved theme
 // preference, applied after session restore) — guarded there directly.
 //
-// GUARDED on hostname (2026-09-03 fix): this file is statically imported by
-// main.jsx unconditionally (so it's part of the one shared bundle regardless
-// of which component actually gets rendered) — module-level code here runs
+// GUARDED on hostname (2026-09-03 fix): this file used to be statically
+// imported by main.jsx unconditionally (it's lazy-loaded on pics.* only
+// since 2026-11, but keep the guard) — module-level code here ran
 // on EVERY page load, main site included, not just pics.<domain>. Without
 // this check, every visit to the main site force-set + persisted dark theme
 // to localStorage, silently overriding the server's/admin's default theme

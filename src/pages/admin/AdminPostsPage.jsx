@@ -5,7 +5,7 @@ import { useClient } from '../../hooks/useClient'
 import { useBatchSelect } from '../../hooks/useBatchSelect'
 import stripHtml from '../../lib/stripHtml'
 import Spinner from '../../components/ui/Spinner'
-import RichTextEditor from '../../components/posts/RichTextEditor'
+import RichTextEditor from '../../components/posts/LazyRichTextEditor'
 import BatchActionBar from '../../components/admin/BatchActionBar'
 import AddToDiscoveryModal from '../../components/discover/AddToDiscoveryModal'
 

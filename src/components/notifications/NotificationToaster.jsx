@@ -1,5 +1,6 @@
 // NotificationToaster.jsx
-// Polls for new notifications every 60s and shows discreet slide-in toasts.
+// Shows discreet slide-in toasts for new notifications, fed by the shared
+// poller in hooks/useNotificationPoll (one request/min, paused in hidden tabs).
 // First poll baselines existing unread IDs so we never toast on page load.
 // Renders via createPortal to avoid clipping from any ancestor overflow:hidden.
 
@@ -9,9 +10,9 @@ import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { MessageSquare, Heart, UserPlus, Bell, Users, X } from 'lucide-react'
 import { useClient } from '../../hooks/useClient'
+import { useNotificationPoll } from '../../hooks/useNotificationPoll'
 
 const TOAST_MS    = 6000   // auto-dismiss after 6 seconds
-const POLL_MS     = 60_000 // check for new notifications every minute
 const MAX_VISIBLE = 3      // cap toasts on screen at once
 
 const TYPE_ICON = {
@@ -107,57 +108,46 @@ function Toast({ toast, onDismiss }) {
 // ── Toast queue + poll ────────────────────────────────────────────────────────
 
 export default function NotificationToaster() {
-  const client        = useClient()
   const user          = useSelector((s) => s.auth.user)
   const toastsEnabled = useSelector((s) => s.auth.user?.prefs?.notifications?.toasts ?? true)
+  const poll          = useNotificationPoll()
   const [toasts, setToasts] = useState([])
   const seenIds   = useRef(new Set())
-  const baselined = useRef(false)
+  const baselined = useRef(null) // userId the seen-set was baselined for
 
   const dismiss = useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
 
   useEffect(() => {
-    if (!client || !user || !toastsEnabled) return
+    if (!poll.fetchedAt || !poll.userId) return
+    const items = poll.items
 
-    const poll = async () => {
-      try {
-        const res   = await client.notifications.list({ unread: true, limit: 20 })
-        const items = res?.orderedItems ?? res?.items ?? []
-
-        if (!baselined.current) {
-          // First run: snapshot existing unread IDs so we don't toast them
-          items.forEach((n) => seenIds.current.add(n.id))
-          baselined.current = true
-          return
-        }
-
-        const fresh = items.filter((n) => !seenIds.current.has(n.id))
-        if (fresh.length === 0) return
-
-        fresh.forEach((n) => seenIds.current.add(n.id))
-
-        setToasts((prev) => {
-          const incoming = fresh.slice(0, MAX_VISIBLE).map((n) => ({
-            id:        n.id,
-            type:      n.type,
-            actorName: n.actorName ?? n.actor?.name ?? 'Someone',
-            summary:   n.summary  ?? '',
-            href:      n.href     ?? null,
-          }))
-          // Newest at front; cap total visible
-          return [...incoming, ...prev].slice(0, MAX_VISIBLE)
-        })
-      } catch {
-        // Non-fatal — user keeps using the app normally
-      }
+    if (baselined.current !== poll.userId) {
+      // First poll for this user: snapshot existing unread IDs so we don't
+      // toast them on page load.
+      seenIds.current = new Set(items.map((n) => n.id))
+      baselined.current = poll.userId
+      return
     }
 
-    poll()
-    const id = setInterval(poll, POLL_MS)
-    return () => clearInterval(id)
-  }, [client, user, toastsEnabled])
+    const fresh = items.filter((n) => !seenIds.current.has(n.id))
+    if (fresh.length === 0) return
+    fresh.forEach((n) => seenIds.current.add(n.id))
+    if (!toastsEnabled) return
+
+    setToasts((prev) => {
+      const incoming = fresh.slice(0, MAX_VISIBLE).map((n) => ({
+        id:        n.id,
+        type:      n.type,
+        actorName: n.actorName ?? n.actor?.name ?? 'Someone',
+        summary:   n.summary  ?? '',
+        href:      n.href     ?? null,
+      }))
+      // Newest at front; cap total visible
+      return [...incoming, ...prev].slice(0, MAX_VISIBLE)
+    })
+  }, [poll, toastsEnabled])
 
   if (!user || toasts.length === 0) return null
 

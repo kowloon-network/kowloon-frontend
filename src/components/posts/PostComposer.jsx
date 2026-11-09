@@ -17,7 +17,8 @@ import { useDraft } from '../../hooks/useDraft'
 import { toast } from '../../app/toast'
 import UserAvatar from '../ui/UserAvatar'
 import { POST_TYPES, POST_TYPE_NAMES } from '../../lib/postTypes'
-import RichTextEditor from './RichTextEditor'
+import RichTextEditor from './LazyRichTextEditor'
+import { loadRichTextEditor } from './richTextEditorLoader'
 import CircleSelector from '../circles/CircleSelector'
 import { useJoinedGroups } from '../../hooks/useJoinedGroups'
 import LocationField from './LocationField'
@@ -363,7 +364,7 @@ export default function PostComposer({
   // autoOpenFilePicker: auto-trigger the Media file picker once on mount.
   lockType = false, mediaAccept = 'image/*,audio/*,video/*', autoOpenFilePicker = false,
 }) {
-  const { user } = useSelector((state) => state.auth)
+  const user = useSelector((state) => state.auth.user)
   const { items: rawCircles } = useSelector((state) => state.myCircles)
   // Order circles by the user's pins so the audience picker matches everywhere.
   const myCircles = useMemo(
@@ -455,6 +456,12 @@ export default function PostComposer({
   // mediaFocusedRef).
   const mediaFocusedRef = useRef(false)
   const handleEditorReady = useCallback((ed) => { editorInstanceRef.current = ed }, [])
+  // The editor chunk is lazy (see LazyRichTextEditor); warm it shortly after
+  // mount so opening the composer doesn't wait on the download.
+  useEffect(() => {
+    const id = setTimeout(() => { loadRichTextEditor().catch(() => {}) }, 1500)
+    return () => clearTimeout(id)
+  }, [])
   // The href we've already auto-filled title/featured/body from, so a later
   // re-fetch never re-injects what the user has since edited or deleted.
   const autoFilledHrefRef = useRef(null)
@@ -550,7 +557,9 @@ export default function PostComposer({
   useEffect(() => {
     if (!expanded) return
     document.body.style.overflow = 'hidden'
-    const handleKey = (e) => { if (e.key === 'Escape') handleCancel() }
+    // Escape collapses but keeps the draft. Read through a ref: this effect
+    // only re-runs on `expanded`, so a direct reference would be stale.
+    const handleKey = (e) => { if (e.key === 'Escape') collapseRef.current?.() }
     document.addEventListener('keydown', handleKey)
 
     // Shrink modal when on-screen keyboard appears
@@ -698,6 +707,42 @@ export default function PostComposer({
     editorInstanceRef.current?.commands.focus('end')
   }, [postType, attachments.length])
 
+  // Close the modal WITHOUT discarding: in-memory state stays, and the draft
+  // is persisted (expanded:false so a reload doesn't pop it back open) so
+  // re-opening restores it. Used by Escape and the backdrop.
+  const handleCollapse = () => {
+    if (submitting) return
+    const hasContent = content.trim() || title.trim() || href.trim()
+      || tags.length || location || startDatePart || endDatePart
+    if (draftKey && hasContent) {
+      draft.save({
+        expanded: false,
+        postType, content, title, href, tags, location, audience,
+        startDatePart, startTimePart, endDatePart, endTimePart, featuredImage,
+      })
+    }
+    setExpanded(false)
+    setTypeMenuOpen(false)
+    setTimeout(() => triggerRef.current?.focus(), 0)
+    onClose?.()
+    prevOpenRef.current = false
+    onOpenChange?.(false)
+  }
+  const collapseRef = useRef(null)
+  useEffect(() => { collapseRef.current = handleCollapse })
+
+  // Explicit Cancel (X): discards the post and its saved draft -- confirm
+  // first if there's anything to lose.
+  const handleDiscardClick = () => {
+    const hasContent = content.trim() || title.trim() || href.trim()
+      || tags.length || location || startDatePart || endDatePart
+      || attachments.length || featuredImage || artFeaturedFile
+    if (hasContent && !window.confirm(t('composer.confirmDiscard', { defaultValue: 'Discard this post?' }))) return
+    handleCancel()
+  }
+
+  // Full reset + draft clear. Called after a successful post and by
+  // handleDiscardClick.
   const handleCancel = () => {
     draft.clear()
     dedupeRef.current = null
@@ -745,8 +790,11 @@ export default function PostComposer({
         const { latitude: lat, longitude: lon } = coords
         setGeo({ lat, lon })
         try {
+          // Use the server's configured geocoder (same as NewPostPage) and
+          // send only ~100m-precision coords to the third party.
+          const base = (geocodingUrl || 'https://nominatim.openstreetmap.org').replace(/\/$/, '')
           const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`,
+            `${base}/reverse?format=json&lat=${lat.toFixed(3)}&lon=${lon.toFixed(3)}`,
             { headers: { 'Accept-Language': 'en', 'User-Agent': 'kowloon-frontend/1.0' } }
           )
           const data = await res.json()
@@ -1093,7 +1141,7 @@ export default function PostComposer({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.43 }}
-                onClick={handleCancel}
+                onClick={handleCollapse}
               />
 
       {/* Panel — full-screen on mobile (like the app). At the lg: breakpoint,
@@ -1104,7 +1152,7 @@ export default function PostComposer({
           both gap-16; they disagreed (gap-10 vs gap-16) until 2026-11, which
           is the kind of drift that silently misaligns this overlay.
           pointer-events-none on the grid wrapper lets clicks in the exposed
-          gutters fall through to the backdrop's onClick={handleCancel}. */}
+          gutters fall through to the backdrop's onClick={handleCollapse}. */}
       <div className="relative flex-1 min-h-0 lg:px-4 pointer-events-none">
         <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-16 h-full">
           <motion.div
@@ -1170,7 +1218,7 @@ export default function PostComposer({
           <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={handleCancel}
+              onClick={handleDiscardClick}
               disabled={submitting}
               aria-label={t('composer.close')}
               className="p-2 text-base-content/50 hover:text-base-content disabled:opacity-30 disabled:cursor-not-allowed transition-colors"

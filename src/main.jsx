@@ -1,9 +1,11 @@
-import { StrictMode } from 'react'
+import { StrictMode, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
+import './fonts.js'
 import './index.css'
 import './i18n.js'
 import App from './App.jsx'
-import PicsApp from './pics/PicsApp.jsx'
+// pics.<domain> only -- split out so the main site never downloads it.
+const PicsApp = lazy(() => import('./pics/PicsApp.jsx'))
 import { initErrorReporting } from './lib/errorReporting.js'
 
 // Fire-and-forget: reads the DSN from the server's /config.json and starts
@@ -16,6 +18,6 @@ const isPics = window.location.hostname.startsWith('pics.')
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    {isPics ? <PicsApp /> : <App />}
+    {isPics ? <Suspense fallback={null}><PicsApp /></Suspense> : <App />}
   </StrictMode>,
 )

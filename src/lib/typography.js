@@ -11,12 +11,14 @@
 
 // ---- Fonts -----------------------------------------------------------------
 // `key` matches the mobile FONTS keys exactly. `stack` is the CSS font-family.
-// Inter + Lora load via Google Fonts; Atkinson + Merriweather via Google Fonts;
-// OpenDyslexic is self-hosted (see @font-face in index.css).
+// All fonts are self-hosted (no third-party requests): Inter, Lora, Atkinson
+// and Merriweather via exact-pinned @fontsource packages imported in
+// src/fonts.js (the variable builds register as "Inter Variable"/"Lora
+// Variable"); OpenDyslexic via @font-face in index.css.
 export const FONTS = [
-  { key: 'inter',        label: 'Inter',                classification: 'sans',          stack: '"Inter", system-ui, sans-serif' },
+  { key: 'inter',        label: 'Inter',                classification: 'sans',          stack: '"Inter Variable", "Inter", system-ui, sans-serif' },
   { key: 'atkinson',     label: 'Atkinson Hyperlegible', classification: 'sans',         stack: '"Atkinson Hyperlegible", system-ui, sans-serif' },
-  { key: 'lora',         label: 'Lora',                 classification: 'serif',         stack: '"Lora", Georgia, serif' },
+  { key: 'lora',         label: 'Lora',                 classification: 'serif',         stack: '"Lora Variable", "Lora", Georgia, serif' },
   { key: 'merriweather', label: 'Merriweather',         classification: 'serif',         stack: '"Merriweather", Georgia, serif' },
   { key: 'opendyslexic', label: 'OpenDyslexic',         classification: 'accessibility', stack: '"OpenDyslexic", sans-serif' },
 ]

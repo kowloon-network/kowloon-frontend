@@ -1,11 +1,11 @@
 import { createBrowserRouter } from 'react-router-dom'
 import PicsLayout from './PicsLayout'
 import PicsGridPage from './PicsGridPage'
-import LoginPage from '../features/auth/LoginPage'
 import ExternalRedirect from './ExternalRedirect'
 
 const picsRouter = createBrowserRouter([
-  { path: '/login', element: <LoginPage /> },
+  // Lazy, like the main router: LoginPage carries the heavy AuthSplash SVGs.
+  { path: '/login', lazy: async () => ({ Component: (await import('../features/auth/LoginPage')).default }) },
   {
     element: <PicsLayout />,
     children: [{ path: '/', element: <PicsGridPage /> }],

@@ -4,7 +4,7 @@ import { Trash2, RotateCcw, Plus, X, ExternalLink, ImagePlus } from 'lucide-reac
 import { useClient } from '../../hooks/useClient'
 import { useBatchSelect } from '../../hooks/useBatchSelect'
 import Spinner from '../../components/ui/Spinner'
-import RichTextEditor from '../../components/posts/RichTextEditor'
+import RichTextEditor from '../../components/posts/LazyRichTextEditor'
 import BatchActionBar from '../../components/admin/BatchActionBar'
 
 function fmtDate(d) {

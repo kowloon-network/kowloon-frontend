@@ -15,7 +15,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { useClient } from '../hooks/useClient'
 import PostTypeSelector from '../components/posts/PostTypeSelector'
-import RichTextEditor from '../components/posts/RichTextEditor'
+import RichTextEditor from '../components/posts/LazyRichTextEditor'
 import LocationField from '../components/posts/LocationField'
 import CircleSelector from '../components/circles/CircleSelector'
 import { useJoinedGroups } from '../hooks/useJoinedGroups'

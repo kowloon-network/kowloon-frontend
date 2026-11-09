@@ -385,6 +385,9 @@ export default function PostBody({ post, showFull = false }) {
   const heroSrc = !isMedia
     ? (post?.featuredImage ?? (isLink ? post?.image : null))
     : null
+  // Cards get a downsized variant (server falls back to the original if that
+  // thumbnail doesn't exist); the full post page and the lightbox get full size.
+  const heroDisplaySrc = showFull ? heroSrc : sizedUrl(heroSrc, 600)
 
   return (
     <div className="reading-surface font-reading text-base-content leading-relaxed">
@@ -420,16 +423,20 @@ export default function PostBody({ post, showFull = false }) {
             className="block mb-6"
           >
             <img
-              src={heroSrc}
+              src={heroDisplaySrc}
               alt={title ?? ''}
+              loading="lazy"
+              decoding="async"
               className="w-full object-cover max-h-64 cursor-pointer"
             />
           </a>
         ) : (
           <>
             <img
-              src={heroSrc}
+              src={heroDisplaySrc}
               alt={title ?? ''}
+              loading="lazy"
+              decoding="async"
               onClick={() => setHeroLightbox(true)}
               className="w-full object-cover mb-6 cursor-zoom-in max-h-[28rem]"
             />

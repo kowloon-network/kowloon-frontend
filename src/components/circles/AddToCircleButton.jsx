@@ -3,8 +3,9 @@
 // the mobile app's profile Add-to-Circle flow. Membership is pre-marked from the
 // server (?contains) each time the picker opens; pins order the list.
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import FocusTrap from 'focus-trap-react'
 import { useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { Check, X, Loader2 } from 'lucide-react'
@@ -27,6 +28,8 @@ export default function AddToCircleButton({ user }) {
   const [query, setQuery] = useState('')
   const [addedIds, setAddedIds] = useState(new Set())
   const [pendingId, setPendingId] = useState(null)
+  const searchRef = useRef(null)
+  const panelRef = useRef(null)
 
   const displayName = user?.name ?? user?.handle ?? user?.id
 
@@ -91,10 +94,23 @@ export default function AddToCircleButton({ user }) {
         {t('user.addToCircle', { defaultValue: 'Add to Circle' })}
       </button>
 
+      {/* Focus trap: focus starts in search, Tab stays in the dialog, and
+          focus returns to the Add button on close. Escape handled above. */}
       {open && createPortal(
-        <>
+        <FocusTrap
+          focusTrapOptions={{
+            escapeDeactivates: false,
+            allowOutsideClick: true,
+            initialFocus: () => searchRef.current ?? panelRef.current,
+            fallbackFocus: () => panelRef.current,
+            returnFocusOnDeactivate: true,
+          }}
+        >
+        <div>
           <div onClick={() => setOpen(false)} aria-hidden="true" className="fixed inset-0 bg-black/50 z-[80]" />
           <div
+            ref={panelRef}
+            tabIndex={-1}
             role="dialog"
             aria-modal="true"
             aria-label={t('user.addToCircle', { defaultValue: 'Add to Circle' })}
@@ -118,7 +134,7 @@ export default function AddToCircleButton({ user }) {
             {/* Search */}
             <div className="shrink-0 px-5 py-3">
               <input
-                autoFocus
+                ref={searchRef}
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -172,7 +188,8 @@ export default function AddToCircleButton({ user }) {
               )}
             </div>
           </div>
-        </>,
+        </div>
+        </FocusTrap>,
         document.body
       )}
     </>

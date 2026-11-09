@@ -1,5 +1,5 @@
 // AdminLayout — shell for all /admin/* routes.
-// Redirects to /login if unauthenticated. Each page handles its own 403 check.
+// Redirects to /login if unauthenticated, and to / if not a server admin.
 
 import { useState, useEffect } from 'react'
 import { NavLink, Outlet, Link } from 'react-router-dom'
@@ -151,6 +151,10 @@ export default function AdminLayout() {
 
   if (!sessionChecked) return null
   if (!user) return <Navigate to="/login" replace />
+  // Non-admins get bounced home rather than an admin shell full of 403s
+  // (the server enforces this regardless; isServerAdmin comes from login
+  // and /auth/me).
+  if (!user.isServerAdmin) return <Navigate to="/" replace />
 
   return (
     <div className="h-screen flex overflow-hidden">

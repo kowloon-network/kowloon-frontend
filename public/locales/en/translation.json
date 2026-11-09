@@ -55,6 +55,7 @@
   "composer": {
     "prompt": "Write something…",
     "close": "Close composer",
+    "confirmDiscard": "Discard this post?",
     "title": "Title…",
     "titleLabel": "Post title",
     "linkUrl": "https://…",

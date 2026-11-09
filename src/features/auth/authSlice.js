@@ -80,14 +80,36 @@ export const oauthExchangeAsync = createAsyncThunk(
   }
 )
 
+// Per-user data left in localStorage by composers (useDraft) and feed scroll
+// tracking (useScrollAnchor). Removed on logout so the next person on this
+// browser doesn't inherit them.
+const USER_STORAGE_PREFIXES = ['kowloon:draft:', 'kowloon:feed:scrollAnchor:']
+
+export function clearUserLocalData() {
+  try {
+    const doomed = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k && USER_STORAGE_PREFIXES.some((p) => k.startsWith(p))) doomed.push(k)
+    }
+    doomed.forEach((k) => localStorage.removeItem(k))
+  } catch { /* storage unavailable -- nothing to clear */ }
+}
+
 export const logoutAsync = createAsyncThunk(
   'auth/logout',
   async (_, { getState }) => {
-    const { serverUrl } = getState().auth
-    const client = getClient(serverUrl)
-    if (client) await client.auth.logout()
-    localStorage.removeItem(SERVER_URL_KEY)
-    clearClient()
+    // try/finally: local cleanup must happen even if client logout throws;
+    // the .rejected case below clears auth state too.
+    try {
+      const { serverUrl } = getState().auth
+      const client = getClient(serverUrl)
+      if (client) await client.auth.logout()
+    } finally {
+      try { localStorage.removeItem(SERVER_URL_KEY) } catch { /* ignore */ }
+      clearUserLocalData()
+      clearClient()
+    }
   }
 )
 
@@ -109,6 +131,13 @@ export const restoreSessionAsync = createAsyncThunk(
 // ---------------------------------------------------------------------------
 // Slice
 // ---------------------------------------------------------------------------
+
+function loggedOut(state) {
+  state.user = null
+  state.token = null
+  state.status = 'idle'
+  state.sessionChecked = true
+}
 
 const authSlice = createSlice({
   name: 'auth',
@@ -203,13 +232,9 @@ const authSlice = createSlice({
         state.error = action.payload
       })
 
-      // logout
-      .addCase(logoutAsync.fulfilled, (state) => {
-        state.user = null
-        state.token = null
-        state.status = 'idle'
-        state.sessionChecked = true
-      })
+      // logout -- rejected too: we're logged out locally either way
+      .addCase(logoutAsync.fulfilled, loggedOut)
+      .addCase(logoutAsync.rejected, loggedOut)
 
       // restoreSession
       .addCase(restoreSessionAsync.pending, (state) => {

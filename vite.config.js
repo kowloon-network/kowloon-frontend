@@ -13,6 +13,8 @@ export default defineConfig({
     // server. The frontend then talks to the backend via VITE_SERVER_URL set
     // in frontend/.env.local. Restart `npm run dev` after toggling this.
     host: true,
-    allowedHosts: true,
+    // Not `true` (any Host header -> DNS-rebinding exposure). localhost is
+    // always allowed; add the Tailscale MagicDNS names dev is reached by.
+    allowedHosts: ["localhost", ".ts.net", "jzenbook"],
   },
 });

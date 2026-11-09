@@ -66,7 +66,14 @@ function handleSessionExpired() {
     import('../features/auth/authSlice.js'),
     isPics ? import('../pics/picsRouter.jsx') : import('../app/router.jsx'),
   ])
-    .then(([{ store }, { clearAuth }, routerMod]) => {
+    .then(async ([{ store }, { clearAuth }, routerMod]) => {
+      // Remove the dead token from storage (the client already drops it on a
+      // 401, but be explicit) and reset the cached client so nothing keeps
+      // using the old session.
+      try { await _client?.auth?.logout() } catch { /* ignore */ }
+      clearClient()
+      // Drafts are deliberately kept here (unlike explicit logout) so a
+      // post being written when the session lapsed survives re-login.
       store.dispatch(clearAuth())
       const path = window?.location?.pathname || ''
       if (!path.startsWith('/login')) {

@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import FocusTrap from 'focus-trap-react'
 import { Play, Music, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import AudioPlayer from './AudioPlayer'
 
@@ -38,6 +39,8 @@ export default function MediaLightbox({ items, index, onClose, onNavigate, edgeP
   const [snap, setSnap] = useState(false)
   const [zoomed, setZoomed] = useState(false)
   const zoomScrollRef = useRef(null)
+  const closeRef = useRef(null)
+  const rootRef = useRef(null)
 
   // Reset zoom when navigating to a different item.
   useEffect(() => { setZoomed(false) }, [index])
@@ -170,8 +173,21 @@ export default function MediaLightbox({ items, index, onClose, onNavigate, edgeP
 
   const trackTransition = dragging || snap ? 'none' : 'transform 250ms ease-out'
 
+  // Focus trap: focus starts on Close, Tab stays in the lightbox, and focus
+  // returns to the thumbnail that opened it. Escape/arrows handled above.
   return (
+    <FocusTrap
+      focusTrapOptions={{
+        escapeDeactivates: false,
+        allowOutsideClick: true,
+        initialFocus: () => closeRef.current ?? rootRef.current,
+        fallbackFocus: () => rootRef.current,
+        returnFocusOnDeactivate: true,
+      }}
+    >
     <div
+      ref={rootRef}
+      tabIndex={-1}
       role="dialog"
       aria-modal="true"
       onClick={onClose}
@@ -182,6 +198,7 @@ export default function MediaLightbox({ items, index, onClose, onNavigate, edgeP
       className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center touch-pan-y overflow-hidden"
     >
       <button
+        ref={closeRef}
         type="button"
         onClick={(e) => { e.stopPropagation(); onClose() }}
         aria-label="Close"
@@ -317,5 +334,6 @@ export default function MediaLightbox({ items, index, onClose, onNavigate, edgeP
         </>
       )}
     </div>
+    </FocusTrap>
   )
 }

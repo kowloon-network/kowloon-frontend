@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { X, Search, Menu } from 'lucide-react'
 import { logoutAsync } from '../../features/auth/authSlice'
-import { useClient } from '../../hooks/useClient'
+import { useNotificationPoll } from '../../hooks/useNotificationPoll'
 import useFitText from '../../hooks/useFitText'
 import sizedUrl from '../../lib/sizedUrl'
 import Sidebar from './Sidebar'
@@ -28,14 +28,14 @@ const navLinkClass = ({ isActive }) =>
 export function Header() {
   const dispatch   = useDispatch()
   const navigate   = useNavigate()
-  const { user }   = useSelector((state) => state.auth)
+  const user       = useSelector((state) => state.auth.user)
   const server     = useSelector((state) => state.server)
-  const client     = useClient()
   const { t }      = useTranslation()
 
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [drawerOpen, setDrawerOpen]     = useState(false)
-  const [unreadCount, setUnreadCount]   = useState(0)
+  // Shared poller (hidden-tab aware) -- see hooks/useNotificationPoll.
+  const { count: unreadCount } = useNotificationPoll()
 
   const serverName = server.name || 'Kowloon'
   const [mobileTitleRef,  mobileTitleWrap]  = useFitText({ maxPx: 18, wrapPx: 13, text: serverName })
@@ -55,22 +55,6 @@ export function Header() {
     }
   }, [drawerOpen])
 
-  // Poll unread notification count every 60s
-  useEffect(() => {
-    if (!client || !user) return
-    const poll = () => client.notifications.unreadCount().then((res) => setUnreadCount(res?.count ?? 0)).catch(() => {})
-    poll()
-    const id = setInterval(poll, 60_000)
-    return () => clearInterval(id)
-  }, [client, user])
-
-  // Live badge sync — NotificationsPage emits this on mark-read/dismiss/mark-all
-  // so the count updates instantly instead of waiting for the next 60s poll.
-  useEffect(() => {
-    const onUnread = (e) => setUnreadCount(e.detail?.count ?? 0)
-    window.addEventListener('kowloon:unread', onUnread)
-    return () => window.removeEventListener('kowloon:unread', onUnread)
-  }, [])
 
   const NAV_LINKS = [
     { to: '/',          label: t('nav.feed')     },

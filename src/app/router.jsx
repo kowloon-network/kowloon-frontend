@@ -1,12 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom'
 import Layout from '../components/layout/Layout'
 import PublicLayout from '../components/layout/PublicLayout'
-import AdminLayout from '../components/layout/AdminLayout'
-import LoginPage from '../features/auth/LoginPage'
-import RegisterPage from '../features/auth/RegisterPage'
-import InviteRedirect from '../features/auth/InviteRedirect'
-import OAuthAuthorizePage from '../features/auth/OAuthAuthorizePage'
-import OAuthCallbackPage from '../features/auth/OAuthCallbackPage'
 
 // Public pages (accessible with or without auth)
 import HomePage from '../pages/HomePage'
@@ -41,36 +35,23 @@ import EditCirclePage from '../pages/EditCirclePage'
 import NotificationsPage from '../pages/NotificationsPage'
 import ProfilePage from '../pages/ProfilePage'
 
-// Admin pages
-import AdminDashboardPage  from '../pages/admin/AdminDashboardPage'
-import AdminUsersPage      from '../pages/admin/AdminUsersPage'
-import AdminPostsPage      from '../pages/admin/AdminPostsPage'
-import AdminGroupsPage     from '../pages/admin/AdminGroupsPage'
-import AdminCirclesPage    from '../pages/admin/AdminCirclesPage'
-import AdminInvitesPage    from '../pages/admin/AdminInvitesPage'
-import AdminModerationPage from '../pages/admin/AdminModerationPage'
-import AdminSettingsPage        from '../pages/admin/AdminSettingsPage'
-import AdminThemesPage          from '../pages/admin/AdminThemesPage'
-import AdminPagesPage           from '../pages/admin/AdminPagesPage'
-import AdminBookmarksPage       from '../pages/admin/AdminBookmarksPage'
-import AdminDiscoveryPage       from '../pages/admin/AdminDiscoveryPage'
-import AdminLogsPage            from '../pages/admin/AdminLogsPage'
-import ForgotPasswordPage       from '../features/auth/ForgotPasswordPage'
-import ResetPasswordPage        from '../features/auth/ResetPasswordPage'
-import VerifyEmailPage          from '../features/auth/VerifyEmailPage'
-import ResendVerificationPage   from '../features/auth/ResendVerificationPage'
+// Code-split routes: admin, auth/oauth pages (LoginPage/RegisterPage pull in
+// the ~765KB AuthSplash SVG scenes) load on demand via React Router's route
+// `lazy` (the data-router equivalent of React.lazy + Suspense -- the router
+// keeps the current page on screen while the chunk loads).
+const lazyRoute = (load) => async () => ({ Component: (await load()).default })
 
 const router = createBrowserRouter([
   // Auth pages — standalone, no layout
-  { path: '/login',                element: <LoginPage /> },
-  { path: '/register',             element: <RegisterPage /> },
-  { path: '/oauth/authorize',      element: <OAuthAuthorizePage /> },
-  { path: '/oauth/callback',       element: <OAuthCallbackPage /> },
-  { path: '/invite/:code',         element: <InviteRedirect /> },
-  { path: '/forgot-password',      element: <ForgotPasswordPage /> },
-  { path: '/reset-password',       element: <ResetPasswordPage /> },
-  { path: '/verify-email',         element: <VerifyEmailPage /> },
-  { path: '/resend-verification',  element: <ResendVerificationPage /> },
+  { path: '/login',                lazy: lazyRoute(() => import('../features/auth/LoginPage')) },
+  { path: '/register',             lazy: lazyRoute(() => import('../features/auth/RegisterPage')) },
+  { path: '/oauth/authorize',      lazy: lazyRoute(() => import('../features/auth/OAuthAuthorizePage')) },
+  { path: '/oauth/callback',       lazy: lazyRoute(() => import('../features/auth/OAuthCallbackPage')) },
+  { path: '/invite/:code',         lazy: lazyRoute(() => import('../features/auth/InviteRedirect')) },
+  { path: '/forgot-password',      lazy: lazyRoute(() => import('../features/auth/ForgotPasswordPage')) },
+  { path: '/reset-password',       lazy: lazyRoute(() => import('../features/auth/ResetPasswordPage')) },
+  { path: '/verify-email',         lazy: lazyRoute(() => import('../features/auth/VerifyEmailPage')) },
+  { path: '/resend-verification',  lazy: lazyRoute(() => import('../features/auth/ResendVerificationPage')) },
 
   // Public routes — visible to all, content varies by auth state
   {
@@ -117,21 +98,21 @@ const router = createBrowserRouter([
 
   // Admin routes — AdminLayout checks auth; each page handles its own 403
   {
-    element: <AdminLayout />,
+    lazy: lazyRoute(() => import('../components/layout/AdminLayout')),
     children: [
-      { path: '/admin',            element: <AdminDashboardPage /> },
-      { path: '/admin/users',      element: <AdminUsersPage /> },
-      { path: '/admin/posts',      element: <AdminPostsPage /> },
-      { path: '/admin/groups',     element: <AdminGroupsPage /> },
-      { path: '/admin/circles',    element: <AdminCirclesPage /> },
-      { path: '/admin/invites',    element: <AdminInvitesPage /> },
-      { path: '/admin/moderation', element: <AdminModerationPage /> },
-      { path: '/admin/themes',     element: <AdminThemesPage /> },
-      { path: '/admin/settings',   element: <AdminSettingsPage /> },
-      { path: '/admin/pages',      element: <AdminPagesPage /> },
-      { path: '/admin/bookmarks',  element: <AdminBookmarksPage /> },
-      { path: '/admin/discovery',  element: <AdminDiscoveryPage /> },
-      { path: '/admin/logs',       element: <AdminLogsPage /> },
+      { path: '/admin',            lazy: lazyRoute(() => import('../pages/admin/AdminDashboardPage')) },
+      { path: '/admin/users',      lazy: lazyRoute(() => import('../pages/admin/AdminUsersPage')) },
+      { path: '/admin/posts',      lazy: lazyRoute(() => import('../pages/admin/AdminPostsPage')) },
+      { path: '/admin/groups',     lazy: lazyRoute(() => import('../pages/admin/AdminGroupsPage')) },
+      { path: '/admin/circles',    lazy: lazyRoute(() => import('../pages/admin/AdminCirclesPage')) },
+      { path: '/admin/invites',    lazy: lazyRoute(() => import('../pages/admin/AdminInvitesPage')) },
+      { path: '/admin/moderation', lazy: lazyRoute(() => import('../pages/admin/AdminModerationPage')) },
+      { path: '/admin/themes',     lazy: lazyRoute(() => import('../pages/admin/AdminThemesPage')) },
+      { path: '/admin/settings',   lazy: lazyRoute(() => import('../pages/admin/AdminSettingsPage')) },
+      { path: '/admin/pages',      lazy: lazyRoute(() => import('../pages/admin/AdminPagesPage')) },
+      { path: '/admin/bookmarks',  lazy: lazyRoute(() => import('../pages/admin/AdminBookmarksPage')) },
+      { path: '/admin/discovery',  lazy: lazyRoute(() => import('../pages/admin/AdminDiscoveryPage')) },
+      { path: '/admin/logs',       lazy: lazyRoute(() => import('../pages/admin/AdminLogsPage')) },
     ],
   },
 ])

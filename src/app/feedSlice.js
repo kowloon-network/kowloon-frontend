@@ -11,7 +11,7 @@
 
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { getClient } from '../lib/client'
-import { loginAsync, registerAsync, logoutAsync, restoreSessionAsync } from '../features/auth/authSlice'
+import { loginAsync, registerAsync, logoutAsync, restoreSessionAsync, clearAuth } from '../features/auth/authSlice'
 
 // ── Async thunks ────────────────────────────────────────────────────────────
 
@@ -227,6 +227,13 @@ const feedSlice = createSlice({
       })
       // Clear everything on logout
       .addCase(logoutAsync.fulfilled, (state) => {
+        resetFeedState(state)
+      })
+      .addCase(logoutAsync.rejected, (state) => {
+        resetFeedState(state)
+      })
+      // Session expired (lib/client.js handleSessionExpired) -- same as logout
+      .addCase(clearAuth, (state) => {
         resetFeedState(state)
       })
       // On successful save, update defaultTypes to match what was saved

@@ -7,12 +7,11 @@
 // sits below the internally-scrolling <main> without needing fixed positioning or
 // content padding. Search lives as a button in the header (matching the app).
 
-import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { Home, Hexagon, Users, Compass, Bell } from 'lucide-react'
-import { useClient } from '../../hooks/useClient'
+import { useNotificationPoll } from '../../hooks/useNotificationPoll'
 
 const TABS = [
   { to: '/',          key: 'feed',      Icon: Home,    end: true  },
@@ -23,30 +22,11 @@ const TABS = [
 ]
 
 export default function BottomTabBar() {
-  const { user } = useSelector((state) => state.auth)
-  const client = useClient()
+  const user = useSelector((state) => state.auth.user)
   const { t } = useTranslation()
-  const [unreadCount, setUnreadCount] = useState(0)
-
-  // Poll unread notification count (same cadence as the desktop header bell).
-  useEffect(() => {
-    if (!client || !user) { setUnreadCount(0); return }
-    const poll = () =>
-      client.notifications.unreadCount()
-        .then((res) => setUnreadCount(res?.count ?? 0))
-        .catch(() => {})
-    poll()
-    const id = setInterval(poll, 60_000)
-    return () => clearInterval(id)
-  }, [client, user])
-
-  // Live badge sync — NotificationsPage emits this on mark-read/dismiss/mark-all
-  // so the badge updates instantly instead of waiting for the next 60s poll.
-  useEffect(() => {
-    const onUnread = (e) => setUnreadCount(e.detail?.count ?? 0)
-    window.addEventListener('kowloon:unread', onUnread)
-    return () => window.removeEventListener('kowloon:unread', onUnread)
-  }, [])
+  // Shared with the header bell -- one request per minute, paused in hidden tabs.
+  const { count: polledCount } = useNotificationPoll()
+  const unreadCount = user ? polledCount : 0
 
   const label = (key) =>
     t(`nav.${key === 'notifications' ? 'notifyShort' : key}`, {

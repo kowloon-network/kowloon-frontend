@@ -21,7 +21,7 @@ import SafeHtml from '../ui/SafeHtml'
 // composer (owned by PostPage). `replyCount` renders a subtle "N replies" hint.
 export default function Reply({ reply, onUpdated, onDeleted, showReply = false, onReplyClick, replyCount = 0 }) {
   const { t } = useTranslation()
-  const { user } = useSelector((s) => s.auth)
+  const user = useSelector((s) => s.auth.user)
   const client = useClient()
 
   const actor = reply.actor ?? {}

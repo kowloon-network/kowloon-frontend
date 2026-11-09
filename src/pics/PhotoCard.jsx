@@ -12,7 +12,7 @@ import sizedUrl from '../lib/sizedUrl'
 
 export default function PhotoCard({ post, attachment, photoCount = 1, onOpen }) {
   const { t } = useTranslation()
-  const { user } = useSelector((state) => state.auth)
+  const user = useSelector((state) => state.auth.user)
 
   const author = post?.actor
   const authorName = author?.name ?? author?.id ?? post?.actorId

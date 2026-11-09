@@ -439,7 +439,7 @@ function PostMoreMenu({ post, t, user, onDeleted }) {
 // ── PostToolbar ──────────────────────────────────────────────────────────────
 
 export default function PostToolbar({ post, onDeleted, onReplyClick }) {
-  const { user } = useSelector((state) => state.auth)
+  const user = useSelector((state) => state.auth.user)
   const { t } = useTranslation()
   const [bookmarking, setBookmarking] = useState(false)
   const [replyOpen, setReplyOpen] = useState(false)

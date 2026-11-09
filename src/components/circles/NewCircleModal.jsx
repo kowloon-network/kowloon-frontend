@@ -6,7 +6,8 @@
 //   onClose()           — close without creating
 //   onCreated(circleId) — called after circle (and optional members) created
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import FocusTrap from 'focus-trap-react'
 import { useDispatch } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
@@ -22,6 +23,7 @@ export default function NewCircleModal({ onClose, onCreated }) {
 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
+  const panelRef = useRef(null)
 
   useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape') onClose() }
@@ -70,12 +72,30 @@ export default function NewCircleModal({ onClose, onCreated }) {
     }
   }
 
+  // Focus trap: focus starts in the name field and returns to the opener on
+  // close. Escape is handled by the keydown listener above.
   return (
+    <FocusTrap
+      focusTrapOptions={{
+        escapeDeactivates: false,
+        allowOutsideClick: true,
+        initialFocus: () => panelRef.current?.querySelector('input, textarea') ?? panelRef.current,
+        fallbackFocus: () => panelRef.current,
+        returnFocusOnDeactivate: true,
+      }}
+    >
     <div
       className="fixed inset-0 z-50 flex items-start justify-center bg-base-content/30 overflow-y-auto py-8"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="relative w-full max-w-2xl bg-base-100 border-2 border-base-300 shadow-xl mx-4 my-auto">
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('circle.newTitle', { defaultValue: 'New Circle' })}
+        className="relative w-full max-w-2xl bg-base-100 border-2 border-base-300 shadow-xl mx-4 my-auto"
+      >
 
         {/* Header — modal owns the title, form is rendered embedded */}
         <div className="flex items-center justify-between px-6 py-4 border-b-2 border-base-300">
@@ -105,5 +125,6 @@ export default function NewCircleModal({ onClose, onCreated }) {
 
       </div>
     </div>
+    </FocusTrap>
   )
 }

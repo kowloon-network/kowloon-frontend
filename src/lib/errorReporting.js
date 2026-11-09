@@ -12,7 +12,8 @@
 //
 // Fails silent and never blocks startup -- if the fetch or init throws, the
 // app renders exactly as it would have.
-import * as Sentry from '@sentry/browser'
+// @sentry/browser is imported dynamically below, only once a DSN is known --
+// servers without error reporting never download the SDK.
 
 let started = false
 
@@ -86,6 +87,7 @@ export async function initErrorReporting() {
     const dsn = cfg?.errorReportingDsn
     if (!dsn) return
 
+    const Sentry = await import('@sentry/browser')
     Sentry.init({
       dsn,
       // Which server this browser was talking to -- all servers serve the
