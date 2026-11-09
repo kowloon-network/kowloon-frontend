@@ -16,6 +16,61 @@ import * as Sentry from '@sentry/browser'
 
 let started = false
 
+// --- URL / text scrubbing --------------------------------------------------
+// Error events and breadcrumbs carry URLs, and Kowloon URLs routinely hold
+// secrets: /reset-password?token=, /verify-email?token=, OAuth ?code=/state,
+// /invite/:code, search terms, Nominatim lat/lon. None of that belongs in an
+// error tracker, so query strings and fragments are dropped wholesale and
+// secret-bearing path segments are redacted.
+const SECRET_PATH_SEGMENT = /(\/(?:invite|reset-password|verify-email)\/)[^/?#\s"'<>]+/gi
+
+export function scrubUrl(url) {
+  if (typeof url !== 'string' || !url) return url
+  return url.replace(/[?#].*$/, '').replace(SECRET_PATH_SEGMENT, '$1[redacted]')
+}
+
+// For free text (exception messages, client SDK errors that embed the
+// request URL): strip any query/fragment that looks like key=value pairs.
+export function scrubText(text) {
+  if (typeof text !== 'string' || !text) return text
+  return text
+    .replace(/[?#][^\s"'<>]*=[^\s"'<>]*/g, '?[redacted]')
+    .replace(SECRET_PATH_SEGMENT, '$1[redacted]')
+}
+
+function scrubEvent(event) {
+  if (event.request?.url) event.request.url = scrubUrl(event.request.url)
+  if (event.request) delete event.request.query_string
+  if (event.message) event.message = scrubText(event.message)
+  if (event.logentry?.message) event.logentry.message = scrubText(event.logentry.message)
+  for (const ex of event.exception?.values ?? []) {
+    if (ex.value) ex.value = scrubText(ex.value)
+    // Stack frame filenames are bundle URLs; strip any ?v= / #hash too.
+    for (const fr of ex.stacktrace?.frames ?? []) {
+      if (fr.filename) fr.filename = scrubUrl(fr.filename)
+      if (fr.abs_path) fr.abs_path = scrubUrl(fr.abs_path)
+    }
+  }
+  if (Array.isArray(event.breadcrumbs)) {
+    event.breadcrumbs = event.breadcrumbs.map(scrubBreadcrumb).filter(Boolean)
+  }
+  return event
+}
+
+function scrubBreadcrumb(crumb) {
+  if (!crumb) return crumb
+  // Console breadcrumbs are free text and can echo anything (tokens, post
+  // content, search terms) -- drop them entirely.
+  if (crumb.category === 'console') return null
+  if (crumb.message) crumb.message = scrubText(crumb.message)
+  if (crumb.data) {
+    for (const k of ['url', 'to', 'from']) {
+      if (typeof crumb.data[k] === 'string') crumb.data[k] = scrubUrl(crumb.data[k])
+    }
+  }
+  return crumb
+}
+
 export async function initErrorReporting() {
   if (started) return
   started = true
@@ -43,6 +98,11 @@ export async function initErrorReporting() {
       // today; pinned so a future default change can't silently widen them.
       sendDefaultPii: false,
       tracesSampleRate: 0,
+      // Scrub (or drop) each breadcrumb as it's recorded, so secrets never
+      // sit in the in-memory buffer either.
+      beforeBreadcrumb(crumb) {
+        return scrubBreadcrumb(crumb)
+      },
       beforeSend(event) {
         // Belt and braces: strip anything request- or user-shaped.
         if (event.request) {
@@ -51,7 +111,8 @@ export async function initErrorReporting() {
           delete event.request.headers
         }
         if (event.user) delete event.user.ip_address
-        return event
+        // URLs (request, breadcrumbs, exception text) can carry tokens/codes.
+        return scrubEvent(event)
       },
     })
   } catch {

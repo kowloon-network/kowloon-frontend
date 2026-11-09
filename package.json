@@ -30,6 +30,7 @@
     "@tiptap/react": "^3.20.1",
     "@tiptap/starter-kit": "^3.20.1",
     "daisyui": "^5.5.19",
+    "dompurify": "3.4.17",
     "focus-trap-react": "^12.0.0",
     "framer-motion": "^12.38.0",
     "i18next": "^25.10.10",

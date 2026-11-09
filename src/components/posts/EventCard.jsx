@@ -8,6 +8,7 @@ import PostMeta from './PostMeta'
 import PostToolbar from './PostToolbar'
 import VisibilityIcon from '../ui/VisibilityIcon'
 import { POST_TYPES } from '../../lib/postTypes'
+import SafeHtml from '../ui/SafeHtml'
 
 const EVENT_COLOR = POST_TYPES['Event']?.color ?? '#cc272e'
 
@@ -91,9 +92,9 @@ export default function EventCard({ post, showFull = false }) {
       {/* Body (description) if present */}
       {body && (
         <>
-          <div
+          <SafeHtml
+            html={body}
             className="font-reading text-base-content/80 leading-relaxed prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: body }}
           />
           {isTruncated && postUrl && (
             <div className="flex justify-end mt-4">

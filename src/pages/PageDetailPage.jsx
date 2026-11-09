@@ -9,6 +9,7 @@ import UserAvatar from '../components/ui/UserAvatar'
 import Timestamp from '../components/ui/Timestamp'
 import Spinner from '../components/ui/Spinner'
 import ErrorState from '../components/ui/ErrorState'
+import SafeHtml from '../components/ui/SafeHtml'
 
 const MOCK_PAGE = {
   id: 'page:about@kwln.org',
@@ -158,9 +159,9 @@ export default function PageDetailPage() {
 
       {/* Body */}
       {page.body && (
-        <div
+        <SafeHtml
+          html={page.body}
           className="prose prose-sm max-w-none text-[13.5px] [&_p]:leading-[1.45] [&_p]:font-[450] font-reading [&_h2]:font-display [&_h2]:text-3xl [&_h2]:tracking-wide [&_h2]:font-normal [&_h3]:font-display [&_h3]:text-2xl [&_h3]:tracking-wide [&_h3]:font-normal [&_a]:text-primary [&_a]:underline"
-          dangerouslySetInnerHTML={{ __html: page.body }}
         />
       )}
 

@@ -22,13 +22,27 @@ export function useFeed(fetchFn) {
   const fetchFnRef = useRef(fetchFn)
   useEffect(() => { fetchFnRef.current = fetchFn }, [fetchFn])
 
+  // Generation counter: bumped every time the feed reloads (view/filter
+  // change). An in-flight loadMore captures it before awaiting and drops its
+  // result if it changed -- otherwise the OLD feed's page would be appended
+  // to the new feed and clobber nextCursor/hasMore.
+  const generationRef = useRef(0)
+  // Synchronous in-flight guard (state updates are async, so a double click
+  // could otherwise fire two loadMore calls for the same cursor).
+  const loadingMoreRef = useRef(false)
+
   // Reload from scratch whenever fetchFn identity changes
   useEffect(() => {
     if (!fetchFn) return
 
     let cancelled = false
+    generationRef.current += 1
+    // Any loadMore still in flight belongs to the previous generation; release
+    // the guard so the new feed can paginate.
+    loadingMoreRef.current = false
 
     setLoading(true)
+    setLoadingMore(false)
     setError(null)
     setItems([])
     setNextCursor(null)
@@ -52,20 +66,29 @@ export function useFeed(fetchFn) {
   }, [fetchFn]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMore = useCallback(async () => {
-    if (loadingMore || !hasMore) return
+    if (loadingMoreRef.current || !hasMore) return
+    loadingMoreRef.current = true
+    const gen = generationRef.current
     setLoadingMore(true)
     setError(null)
     try {
       const { items: newItems, nextCursor: nc, hasMore: more } = await fetchFnRef.current(nextCursor)
+      if (gen !== generationRef.current) return // feed changed mid-flight; discard
       setItems((prev) => [...prev, ...newItems])
       setNextCursor(nc ?? null)
       setHasMore(more ?? false)
     } catch (err) {
+      if (gen !== generationRef.current) return
       setError(err.message || 'Failed to load more')
     } finally {
-      setLoadingMore(false)
+      // Only the current generation owns the guard/spinner; a stale call must
+      // not reset state belonging to a newer loadMore.
+      if (gen === generationRef.current) {
+        loadingMoreRef.current = false
+        setLoadingMore(false)
+      }
     }
-  }, [nextCursor, hasMore, loadingMore])
+  }, [nextCursor, hasMore])
 
   const removeItem = useCallback((id) => {
     setItems((prev) => prev.filter((item) => item.id !== id))

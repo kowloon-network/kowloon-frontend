@@ -11,6 +11,7 @@ import { useClient } from '../hooks/useClient'
 import Spinner from '../components/ui/Spinner'
 import ErrorState from '../components/ui/ErrorState'
 import BookmarkActionMenu from '../components/bookmarks/BookmarkActionMenu'
+import SafeHtml from '../components/ui/SafeHtml'
 
 // ── BookmarkRow ───────────────────────────────────────────────────────────────
 
@@ -49,9 +50,9 @@ function BookmarkRow({ bookmark, isOwner, allFolders, onMutated }) {
           </div>
         )}
         {bookmark.body && (
-          <div
+          <SafeHtml
+            html={bookmark.body}
             className="prose prose-sm max-w-none text-base-content/70 text-xs mt-1 line-clamp-2"
-            dangerouslySetInnerHTML={{ __html: bookmark.body }}
           />
         )}
       </div>

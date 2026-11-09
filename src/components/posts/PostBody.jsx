@@ -12,6 +12,7 @@ import MediaLightbox from '../ui/MediaLightbox'
 import EmbedPlayer from './EmbedPlayer'
 import UserAvatar from '../ui/UserAvatar'
 import sizedUrl from '../../lib/sizedUrl'
+import SafeHtml from '../ui/SafeHtml'
 
 marked.use({ breaks: true, gfm: true })
 
@@ -360,7 +361,9 @@ export default function PostBody({ post, showFull = false }) {
     }
   }
 
-  // body = pre-rendered HTML from server; fall back to rendering raw markdown for local/mock data
+  // body = pre-rendered HTML from server; fall back to rendering raw markdown for local/mock data.
+  // marked passes raw HTML through untouched, so this output is only safe
+  // because it is rendered via <SafeHtml> below.
   const rawSource = post?.source?.content ?? (typeof post?.source === 'string' ? post.source : null) ?? post?.content ?? ''
   const fullHtml = post?.body ?? (rawSource ? marked.parse(rawSource) : '')
   const isTruncated = !showFull && !!post?.summary
@@ -450,10 +453,12 @@ export default function PostBody({ post, showFull = false }) {
           : <AttachmentGrid attachments={post?.attachments ?? []} postUrl={postUrl} />
       )}
 
-      <div
+      {/* SafeHtml: body may come from an arbitrary remote server (ServerPage)
+          or from the local marked fallback -- sanitize before injecting. */}
+      <SafeHtml
+        html={html}
         onClick={handleBodyClick}
         className="prose prose-lg max-w-none [&_h1]:text-xl lg:[&_h1]:text-3xl [&_h1]:mt-0 [&_h1]:mb-3 [&_h2]:text-lg lg:[&_h2]:text-xl [&_h3]:text-base lg:[&_h3]:text-lg"
-        dangerouslySetInnerHTML={{ __html: html }}
       />
 
       {isTruncated && postUrl && (

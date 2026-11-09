@@ -14,6 +14,7 @@ import UserAvatar from '../ui/UserAvatar'
 import Timestamp from '../ui/Timestamp'
 import ReactButton from './ReactButton'
 import { useClient } from '../../hooks/useClient'
+import SafeHtml from '../ui/SafeHtml'
 
 // `showReply` gates the threaded-reply affordance — first-level replies only,
 // since threading is capped at 2 levels. `onReplyClick` toggles the inline
@@ -24,7 +25,11 @@ export default function Reply({ reply, onUpdated, onDeleted, showReply = false, 
   const client = useClient()
 
   const actor = reply.actor ?? {}
-  const html = reply.body || reply.source?.content || ''
+  // Only the server-rendered `body` is treated as HTML (and still sanitized
+  // via SafeHtml). The raw `source.content` fallback is user-authored
+  // markdown/text, so it's rendered as plain text, never as HTML.
+  const html = reply.body || ''
+  const fallbackText = html ? '' : (reply.source?.content || '')
   const isAuthor = !!user && reply.actorId === user.id
 
   const [editing, setEditing] = useState(false)
@@ -117,10 +122,16 @@ export default function Reply({ reply, onUpdated, onDeleted, showReply = false, 
         ) : (
           html ? (
             <div className="reading-surface">
-              <div
+              <SafeHtml
+                html={html}
                 className="prose prose-sm max-w-none font-reading text-base-content/80"
-                dangerouslySetInnerHTML={{ __html: html }}
               />
+            </div>
+          ) : fallbackText ? (
+            <div className="reading-surface">
+              <p className="prose prose-sm max-w-none font-reading text-base-content/80 whitespace-pre-wrap">
+                {fallbackText}
+              </p>
             </div>
           ) : null
         )}

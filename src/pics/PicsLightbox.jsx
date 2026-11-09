@@ -23,6 +23,7 @@ import MediaLightbox from '../components/ui/MediaLightbox'
 import PostMeta from '../components/posts/PostMeta'
 import PostReacts from '../components/posts/PostReacts'
 import PostToolbar from '../components/posts/PostToolbar'
+import SafeHtml from '../components/ui/SafeHtml'
 
 // Post-to-post slide: whichever post is leaving exits toward the swipe
 // direction, the incoming one enters from the opposite edge — the "swipe up
@@ -150,13 +151,13 @@ export default function PicsLightbox({ posts, activePostIndex, activePhotoIndex,
           <div className="fixed inset-x-0 bottom-0 z-[110] max-h-[45vh] overflow-y-auto bg-base-100 text-base-content border-t-2 border-base-300 px-4 py-4 flex flex-col gap-3">
             <PostMeta post={post} />
             {post?.body && (
-              // Server-sanitized HTML (same trust boundary the main site's PostBody
-              // already relies on) — not re-rendering PostBody itself here, since
+              // Server-sanitized HTML, re-sanitized client-side via SafeHtml (same
+              // as PostBody) — not re-rendering PostBody itself here, since
               // it would also try to render this Media post's own attachment
               // gallery a second time (the photo is already the fullscreen image).
-              <div
+              <SafeHtml
+                html={post.body}
                 className="reading-surface font-reading text-sm max-h-32 overflow-y-auto"
-                dangerouslySetInnerHTML={{ __html: post.body }}
               />
             )}
             <PostReacts post={post} />

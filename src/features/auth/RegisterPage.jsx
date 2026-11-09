@@ -6,6 +6,7 @@ import { registerAsync, clearError } from './authSlice'
 import PasswordInput from '../../components/ui/PasswordInput'
 import AuthSplash from '../../components/auth/AuthSplash'
 import { useIsDesktop } from '../../hooks/useIsDesktop'
+import SafeHtml from '../../components/ui/SafeHtml'
 
 const FIXED_SERVER = import.meta.env.VITE_SERVER_URL || window.KOWLOON_CONFIG?.apiUrl || window.location.origin
 
@@ -317,10 +318,11 @@ export default function RegisterPage() {
                         onChange={() => toggleRule(rule.id)}
                         className="mt-1.5 w-4 h-4 accent-primary cursor-pointer shrink-0"
                       />
-                      <label
+                      <SafeHtml
+                        as="label"
+                        html={rule.html || ''}
                         htmlFor={`rule-${rule.id}`}
                         className="font-reading text-sm text-base-content cursor-pointer flex-1 [&_p]:m-0 [&_p+p]:mt-2 [&_a]:text-primary [&_a]:underline"
-                        dangerouslySetInnerHTML={{ __html: rule.html || '' }}
                       />
                     </li>
                   ))}

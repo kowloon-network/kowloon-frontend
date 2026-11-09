@@ -4,6 +4,7 @@
 import { useSelector } from 'react-redux'
 import { MapPin } from 'lucide-react'
 import sizedUrl from '../../lib/sizedUrl'
+import SafeHtml from './SafeHtml'
 
 export default function ServerInfo() {
   const server   = useSelector((state) => state.server)
@@ -29,9 +30,9 @@ export default function ServerInfo() {
       )}
 
       {server.description && (
-        <div
+        <SafeHtml
+          html={server.description}
           className="font-reading text-sm text-base-content/80 leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: server.description }}
         />
       )}
 
