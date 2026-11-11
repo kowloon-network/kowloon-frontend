@@ -48,9 +48,9 @@ const SECTIONS = [
   ] },
 ]
 
-function SectionTitle({ children, aside }) {
+function SectionTitle({ children, aside, first = false }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 border-b-2 border-base-300 pb-2 mb-3 mt-10 first:mt-0">
+    <div className={`flex items-baseline justify-between gap-4 border-b-2 border-base-300 pb-2 mb-3 ${first ? '' : 'mt-10'}`}>
       <h2 className="font-display text-2xl tracking-wide">{children}</h2>
       {aside}
     </div>
@@ -150,6 +150,7 @@ export default function AdminDashboardPage() {
 
       {/* 1. Moderation */}
       <SectionTitle
+        first
         aside={openTotal > 0 && (
           <Link to="/admin/moderation" className="font-ui text-xs uppercase tracking-widest text-primary hover:underline whitespace-nowrap">
             {openTotal > REPORTS_SHOWN ? `All ${openTotal} open` : 'Moderation'}
