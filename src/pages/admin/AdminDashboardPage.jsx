@@ -1,8 +1,8 @@
 // AdminDashboardPage -- the admin panel's front page, built phone-first
 // (most admins run their server from a phone). Order, top to bottom:
-//   1. Moderation: open reports, each opening its report page
-//   2. Quick actions
-//   3. Your community: the four numbers an admin actually watches
+//   1. Your community: the four numbers an admin actually watches
+//   2. Moderation: open reports, each opening its report page
+//   3. Create new: quick actions
 //   4. Sections: every admin area with a one-line description (phone/tablet
 //      only -- the desktop sidebar already lists them)
 //   5. Server health, collapsed: for whoever looks after the machine
@@ -12,7 +12,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  BookOpen, Bookmark, Mail, Compass, ExternalLink, ChevronRight, AlertTriangle,
+  BookOpen, Bookmark, Mail, Compass, ExternalLink, ChevronRight, AlertTriangle, ArrowRight,
   Flag, Users, FileText, Circle, Users2, Palette, Settings, ScrollText,
 } from 'lucide-react'
 import { useClient } from '../../hooks/useClient'
@@ -148,14 +148,28 @@ export default function AdminDashboardPage() {
         </Link>
       )}
 
-      {/* 1. Moderation */}
+      {/* 1. Your community */}
+      <SectionTitle first>Your community</SectionTitle>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        <CommunityTile label="Members" value={c.users} sub={a.newUsersWeek != null ? `${a.newUsersWeek} new this week` : null} to="/admin/users" />
+        <CommunityTile label="Posts today" value={a.postsToday} sub={c.posts != null ? `${c.posts} in all` : null} to="/admin/posts" />
+        <CommunityTile label="Groups" value={c.groups} to="/admin/groups" />
+        <CommunityTile label="Invites" value={c.activeInvites} sub={a.invitesUsed != null ? `active -- ${a.invitesUsed} used` : 'active'} to="/admin/invites" />
+      </div>
+
+      {/* 2. Moderation */}
       <SectionTitle
-        first
-        aside={openTotal > 0 && (
-          <Link to="/admin/moderation" className="font-ui text-xs uppercase tracking-widest text-primary hover:underline whitespace-nowrap">
-            {openTotal > REPORTS_SHOWN ? `All ${openTotal} open` : 'Moderation'}
+        aside={
+          <Link
+            to="/admin/moderation"
+            aria-label={openTotal > REPORTS_SHOWN ? `All ${openTotal} open reports` : 'Open Moderation'}
+            title="Moderation"
+            className="flex items-center gap-1.5 font-ui text-xs uppercase tracking-widest text-primary hover:translate-x-0.5 transition-transform"
+          >
+            {openTotal > REPORTS_SHOWN && <span>{openTotal} open</span>}
+            <ArrowRight size={20} />
           </Link>
-        )}
+        }
       >
         Moderation
       </SectionTitle>
@@ -163,7 +177,7 @@ export default function AdminDashboardPage() {
         ? <p className="font-ui text-sm text-error py-3">Couldn't load reports. <Link to="/admin/moderation" className="underline">Open Moderation</Link></p>
         : <ReportsTable flags={reports?.items ?? []} empty="No open reports." />}
 
-      {/* 2. Quick actions */}
+      {/* 3. Quick actions */}
       <SectionTitle>Create new</SectionTitle>
       <div className="grid grid-cols-3 gap-2">
         {QUICK_ACTIONS.map(({ to, label, icon: Icon }) => (
@@ -176,15 +190,6 @@ export default function AdminDashboardPage() {
             {label}
           </Link>
         ))}
-      </div>
-
-      {/* 3. Your community */}
-      <SectionTitle>Your community</SectionTitle>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        <CommunityTile label="Members" value={c.users} sub={a.newUsersWeek != null ? `${a.newUsersWeek} new this week` : null} to="/admin/users" />
-        <CommunityTile label="Posts today" value={a.postsToday} sub={c.posts != null ? `${c.posts} in all` : null} to="/admin/posts" />
-        <CommunityTile label="Groups" value={c.groups} to="/admin/groups" />
-        <CommunityTile label="Invites" value={c.activeInvites} sub={a.invitesUsed != null ? `active -- ${a.invitesUsed} used` : 'active'} to="/admin/invites" />
       </div>
 
       {/* 4. Sections -- the desktop sidebar already lists these */}
