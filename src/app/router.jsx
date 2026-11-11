@@ -114,6 +114,22 @@ const router = createBrowserRouter([
       { path: '/admin/bookmarks',  lazy: lazyRoute(() => import('../pages/admin/AdminBookmarksPage')) },
       { path: '/admin/discovery',  lazy: lazyRoute(() => import('../pages/admin/AdminDiscoveryPage')) },
       { path: '/admin/logs',       lazy: lazyRoute(() => import('../pages/admin/AdminLogsPage')) },
+      // List / New / Edit split (WordPress-style): each managed type's list page
+      // has a New button; creating and editing happen on their own pages.
+      { path: '/admin/pages/new', lazy: lazyRoute(() => import('../pages/admin/AdminPageEditPage')) },
+      { path: '/admin/pages/:id/edit', lazy: lazyRoute(() => import('../pages/admin/AdminPageEditPage')) },
+      { path: '/admin/bookmarks/new', lazy: lazyRoute(() => import('../pages/admin/AdminBookmarkEditPage')) },
+      { path: '/admin/bookmarks/:id/edit', lazy: lazyRoute(() => import('../pages/admin/AdminBookmarkEditPage')) },
+      { path: '/admin/posts/new', lazy: lazyRoute(() => import('../pages/admin/AdminPostEditPage')) },
+      { path: '/admin/posts/:id/edit', lazy: lazyRoute(() => import('../pages/admin/AdminPostEditPage')) },
+      { path: '/admin/circles/new', lazy: lazyRoute(() => import('../pages/admin/AdminCircleEditPage')) },
+      { path: '/admin/circles/:id/edit', lazy: lazyRoute(() => import('../pages/admin/AdminCircleEditPage')) },
+      { path: '/admin/groups/new', lazy: lazyRoute(() => import('../pages/admin/AdminGroupEditPage')) },
+      { path: '/admin/groups/:id/edit', lazy: lazyRoute(() => import('../pages/admin/AdminGroupEditPage')) },
+      { path: '/admin/themes/new', lazy: lazyRoute(() => import('../pages/admin/AdminThemeEditPage')) },
+      { path: '/admin/themes/:id/edit', lazy: lazyRoute(() => import('../pages/admin/AdminThemeEditPage')) },
+      { path: '/admin/invites/new', lazy: lazyRoute(() => import('../pages/admin/AdminInviteNewPage')) },
+      { path: '/admin/users/new', lazy: lazyRoute(() => import('../pages/admin/AdminUserNewPage')) },
     ],
   },
 ])

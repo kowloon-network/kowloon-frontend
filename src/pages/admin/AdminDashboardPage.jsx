@@ -22,9 +22,9 @@ import { ReportsTable } from '../../components/admin/reports'
 const REPORTS_SHOWN = 5
 
 const QUICK_ACTIONS = [
-  { to: '/admin/invites?new=1',   label: 'Invite',   icon: Mail },
-  { to: '/admin/pages?new=1',     label: 'Page',     icon: BookOpen },
-  { to: '/admin/bookmarks?new=1', label: 'Bookmark', icon: Bookmark },
+  { to: '/admin/invites/new',   label: 'Invite',   icon: Mail },
+  { to: '/admin/pages/new',     label: 'Page',     icon: BookOpen },
+  { to: '/admin/bookmarks/new', label: 'Bookmark', icon: Bookmark },
 ]
 
 const SECTIONS = [

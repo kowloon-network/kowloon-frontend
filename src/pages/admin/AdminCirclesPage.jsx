@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Trash2, RotateCcw, ExternalLink, Plus, X, ImagePlus, Pencil, Compass } from 'lucide-react'
+import { Trash2, RotateCcw, ExternalLink, Pencil, Compass } from 'lucide-react'
 import { useClient } from '../../hooks/useClient'
 import { useBatchSelect } from '../../hooks/useBatchSelect'
 import Spinner from '../../components/ui/Spinner'
 import BatchActionBar from '../../components/admin/BatchActionBar'
+import { AdminListHeader } from '../../components/admin/AdminPageHeader'
 import AddToDiscoveryModal from '../../components/discover/AddToDiscoveryModal'
 
 function fmtDate(d) {
@@ -12,7 +13,7 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-// Mirrors the server's getServerActorId() fallback (`@${domain}`) — used only
+// Mirrors the server's getServerActorId() fallback (`@${domain}`) -- used only
 // to decide whether to show the Edit affordance. The server is the source of
 // truth: it 403s if a custom `actorId` setting makes this guess wrong.
 function serverActorId(client) {
@@ -21,141 +22,6 @@ function serverActorId(client) {
   } catch {
     return null
   }
-}
-
-const VISIBILITY_OPTIONS = [
-  { value: '@public', label: 'Public' },
-  { value: '@server', label: 'Server only' },
-]
-
-function CircleForm({ initial, onSave, onCancel }) {
-  const client = useClient()
-  const [name, setName] = useState(initial?.name ?? '')
-  const [summary, setSummary] = useState(initial?.summary ?? '')
-  const [to, setTo] = useState(initial?.to || '@public')
-  const [iconFile, setIconFile] = useState(null)
-  const [iconPreview, setIconPreview] = useState(initial?.icon ?? null)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState(null)
-  const iconInputRef = useRef(null)
-
-  const handleIconChange = (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setIconFile(file)
-    setIconPreview(URL.createObjectURL(file))
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setSaving(true)
-    setError(null)
-    try {
-      let iconValue
-      if (iconFile) {
-        const res = await client.files.upload({
-          file: iconFile,
-          filename: iconFile.name,
-          contentType: iconFile.type,
-          to,
-          generateThumbnail: true,
-        })
-        iconValue = res?.file?.url
-      }
-
-      const opts = {
-        name,
-        summary: summary || undefined,
-        to,
-        canReply: to,
-        canReact: to,
-        ...(iconValue ? { icon: iconValue } : {}),
-      }
-
-      let res
-      if (initial?.id) {
-        res = await client.admin.updateCircle({ circleId: initial.id, updates: opts })
-        onSave(res.circle)
-      } else {
-        res = await client.admin.createCircle(opts)
-        onSave(res.circle)
-      }
-    } catch (err) {
-      setError(
-        err?.status === 403 || err?.statusCode === 403
-          ? "Only circles this server created can be edited here."
-          : err?.message || 'Failed to save circle'
-      )
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="border-2 border-primary p-6 mb-6 flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-2xl tracking-wide">{initial?.id ? 'Edit Circle' : 'New Circle'}</h2>
-        <button type="button" onClick={onCancel} className="p-1 text-base-content/40 hover:text-base-content transition-colors">
-          <X size={16} />
-        </button>
-      </div>
-
-      {error && <p className="font-ui text-xs text-error">{error}</p>}
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-1 col-span-2">
-          <label className="font-ui text-xs uppercase tracking-widest text-base-content/50">Name *</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} required
-            className="border-2 border-base-300 focus:border-primary bg-base-100 px-3 py-2 font-ui text-sm outline-none" />
-        </div>
-        <div className="flex flex-col gap-1 col-span-2">
-          <label className="font-ui text-xs uppercase tracking-widest text-base-content/50">Summary</label>
-          <textarea value={summary} onChange={(e) => setSummary(e.target.value)} rows={3}
-            className="border-2 border-base-300 focus:border-primary bg-base-100 px-3 py-2 font-ui text-sm outline-none resize-y" />
-        </div>
-
-        <div className="flex flex-col gap-2 col-span-2">
-          <label className="font-ui text-xs uppercase tracking-widest text-base-content/50">Icon</label>
-          {iconPreview ? (
-            <div className="relative w-24">
-              <img src={iconPreview} alt="Icon" className="w-24 h-24 object-cover" />
-              <button type="button" onClick={() => { setIconFile(null); setIconPreview(null) }}
-                className="absolute top-1 right-1 p-1 bg-base-100/90 text-base-content hover:text-error transition-colors" title="Remove icon">
-                <X size={12} />
-              </button>
-            </div>
-          ) : (
-            <button type="button" onClick={() => iconInputRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-3 border-2 border-dashed border-base-300 hover:border-primary text-base-content/40 hover:text-primary transition-colors font-ui text-xs uppercase tracking-widest self-start">
-              <ImagePlus size={14} /> Upload icon
-            </button>
-          )}
-          <input ref={iconInputRef} type="file" accept="image/*" onChange={handleIconChange} className="hidden" />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="font-ui text-xs uppercase tracking-widest text-base-content/50">Visibility</label>
-          <select value={to} onChange={(e) => setTo(e.target.value)}
-            className="border-2 border-base-300 focus:border-primary bg-base-100 px-3 py-2 font-ui text-sm outline-none">
-            {VISIBILITY_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="flex gap-3">
-        <button type="submit" disabled={saving || !name.trim()}
-          className="px-5 py-2 bg-primary text-primary-content font-ui text-xs uppercase tracking-widest disabled:opacity-50">
-          {saving ? 'Saving…' : 'Save'}
-        </button>
-        <button type="button" onClick={onCancel}
-          className="px-5 py-2 border border-base-300 font-ui text-xs uppercase tracking-widest hover:bg-base-200 transition-colors">
-          Cancel
-        </button>
-      </div>
-    </form>
-  )
 }
 
 export default function AdminCirclesPage() {
@@ -167,8 +33,6 @@ export default function AdminCirclesPage() {
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [pending, setPending] = useState(false)
-  const [showForm, setShowForm] = useState(false)
-  const [editing, setEditing] = useState(null)
   const [discoveryItem, setDiscoveryItem] = useState(null)
   const { selected, toggle, selectAll, clear, isSelected, allSelected, someSelected, count } = useBatchSelect(circles)
 
@@ -211,16 +75,6 @@ export default function AdminCirclesPage() {
     setPending(false)
   }
 
-  const handleSaved = (circle) => {
-    if (editing) {
-      setCircles((prev) => prev.map((c) => c.id === circle.id ? circle : c))
-      setEditing(null)
-    } else {
-      setCircles((prev) => [circle, ...prev])
-      setShowForm(false)
-    }
-  }
-
   const handleBatchSoftDelete = async () => {
     if (!confirm(`Soft-delete ${count} circle(s)?`)) return
     setPending(true)
@@ -257,23 +111,8 @@ export default function AdminCirclesPage() {
 
   return (
     <div>
-      <div className="flex items-baseline justify-between border-b-2 border-base-300 pb-4 mb-6">
-        <h1 className="font-display text-5xl tracking-wide">Circles</h1>
-        <div className="flex items-center gap-4">
-          <span className="font-ui text-xs uppercase tracking-widest text-base-content/40">{total} total</span>
-          <button onClick={() => { setShowForm((v) => !v); setEditing(null) }}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-content font-ui text-xs uppercase tracking-widest">
-            <Plus size={13} /> New Circle
-          </button>
-        </div>
-      </div>
-
-      {showForm && !editing && (
-        <CircleForm onSave={handleSaved} onCancel={() => setShowForm(false)} />
-      )}
-      {editing && (
-        <CircleForm initial={editing} onSave={handleSaved} onCancel={() => setEditing(null)} />
-      )}
+      <AdminListHeader title="Circles" newTo="/admin/circles/new" newLabel="New Circle"
+        aside={<span className="font-ui text-xs uppercase tracking-widest text-base-content/40">{total} total</span>} />
 
       <div className="flex gap-0 mb-4">
         {FILTERS.map(([val, label]) => (
@@ -311,7 +150,11 @@ export default function AdminCirclesPage() {
                     <input type="checkbox" checked={isSelected(c.id)} onChange={() => toggle(c.id)} className="cursor-pointer" />
                   </td>
                   <td className="py-3 pr-4">
-                    <Link to={`/circles/${encodeURIComponent(c.id)}`} className="font-ui text-sm hover:text-primary transition-colors">
+                    {/* Only server-owned items are editable; others link to the public view. */}
+                    <Link to={!c.deletedAt && ownActorId && c.actorId === ownActorId
+                      ? `/admin/circles/${encodeURIComponent(c.id)}/edit`
+                      : `/circles/${encodeURIComponent(c.id)}`}
+                      className="font-ui text-sm hover:text-primary transition-colors">
                       {c.name ?? c.id}
                     </Link>
                   </td>
@@ -335,10 +178,10 @@ export default function AdminCirclesPage() {
                       </button>
                     )}
                     {!c.deletedAt && ownActorId && c.actorId === ownActorId && (
-                      <button onClick={() => { setEditing(c); setShowForm(false) }}
+                      <Link to={`/admin/circles/${encodeURIComponent(c.id)}/edit`}
                         className="p-1 text-base-content/30 hover:text-base-content transition-colors inline-block mr-1" title="Edit">
                         <Pencil size={13} />
-                      </button>
+                      </Link>
                     )}
                     {c.deletedAt ? (
                       <button onClick={() => handleRestore(c.id)} disabled={pending}
