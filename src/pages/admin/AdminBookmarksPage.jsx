@@ -6,9 +6,11 @@ import { useBatchSelect } from '../../hooks/useBatchSelect'
 import Spinner from '../../components/ui/Spinner'
 import BatchActionBar from '../../components/admin/BatchActionBar'
 import { AdminListHeader } from '../../components/admin/AdminPageHeader'
+import SortableTableBody from '../../components/admin/SortableTableBody'
+import { applyOrder } from '../../components/admin/sortOrder'
 
 function fmtDate(d) {
-  if (!d) return '—'
+  if (!d) return '--'
   return new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
@@ -23,16 +25,18 @@ function serverActorId(client) {
   }
 }
 
+const PAGE_SIZE = 100
+
 export default function AdminBookmarksPage() {
   const client = useClient()
   const [bookmarks, setBookmarks] = useState([])
-  const [folders, setFolders] = useState([])
   const [loading, setLoading] = useState(true)
   const [denied, setDenied] = useState(false)
   const [filter, setFilter] = useState('active')
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [pending, setPending] = useState(false)
+  const [orderError, setOrderError] = useState(null)
   const { selected, toggle, selectAll, clear, isSelected, allSelected, someSelected, count } = useBatchSelect(bookmarks)
 
   const ownActorId = serverActorId(client)
@@ -41,15 +45,12 @@ export default function AdminBookmarksPage() {
     if (!client) return
     setLoading(true)
     try {
-      const params = { page }
+      // 100 per page so the whole list is usually here for drag-to-reorder.
+      const params = { page, limit: PAGE_SIZE }
       if (filter === 'deleted') params.showDeleted = true
-      const [res, folderRes] = await Promise.all([
-        client.admin.getBookmarks(params),
-        client.admin.getBookmarks({ type: 'Folder' }),
-      ])
+      const res = await client.admin.getBookmarks(params)
       setBookmarks(res?.orderedItems ?? [])
       setTotal(res?.totalItems ?? 0)
-      setFolders((folderRes?.orderedItems ?? []).filter((f) => !f.parentFolder))
     } catch (err) {
       if (err?.status === 403 || err?.statusCode === 403) setDenied(true)
     } finally {
@@ -59,6 +60,18 @@ export default function AdminBookmarksPage() {
 
   useEffect(() => { load() }, [load])
   useEffect(() => { clear() }, [filter, page])
+
+  // Drag-to-reorder: show the new order straight away, then save it.
+  const handleReorder = async (ids) => {
+    setOrderError(null)
+    setBookmarks((prev) => applyOrder(prev, ids))
+    try {
+      await client.admin.reorderBookmarks({ ids })
+    } catch (err) {
+      setOrderError(err?.message || "Couldn't save the new order.")
+      load()
+    }
+  }
 
   const handleDelete = async (bookmarkId) => {
     setPending(true)
@@ -109,8 +122,9 @@ export default function AdminBookmarksPage() {
   )
 
   const FILTERS = [['active', 'Active'], ['deleted', 'Deleted']]
-  const limit = 20
-  const pages = Math.ceil(total / limit)
+  const pages = Math.ceil(total / PAGE_SIZE)
+  // Reordering needs the whole list on screen.
+  const canReorder = filter === 'active' && pages <= 1
 
   return (
     <div>
@@ -134,37 +148,50 @@ export default function AdminBookmarksPage() {
 
       {loading ? <Spinner centered /> : (
         <>
+          {orderError && <p className="font-ui text-sm text-error mb-3">{orderError}</p>}
+          {canReorder && bookmarks.length > 1 && (
+            <p className="font-ui text-xs text-base-content/50 mb-3">Drag the handle to change the order bookmarks appear in.</p>
+          )}
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b-2 border-base-300">
+                <th className="pb-2 pr-2 w-6" />
                 <th className="pb-2 pr-3 w-6">
                   <input type="checkbox" checked={allSelected} ref={(el) => { if (el) el.indeterminate = someSelected }}
                     onChange={() => allSelected ? clear() : selectAll()} className="cursor-pointer" />
                 </th>
-                {['Title', 'Type', 'Folder', 'Created', 'Status', ''].map((h) => (
+                {['Title', 'Type', 'Created', 'Status', ''].map((h) => (
                   <th key={h} className="font-ui text-xs uppercase tracking-widest text-base-content/50 text-left pb-2 pr-4 last:pr-0">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody>
-              {bookmarks.map((b) => (
-                <tr key={b.id} className={`border-b border-base-300 hover:bg-base-200 ${b.deletedAt ? 'opacity-50' : ''} ${isSelected(b.id) ? 'bg-secondary/10' : ''}`}>
+            <SortableTableBody
+              items={bookmarks}
+              parentKey="parentFolder"
+              enabled={canReorder}
+              onReorder={handleReorder}
+              rowClassName={(b) => `border-b border-base-300 hover:bg-base-200 ${b.deletedAt ? 'opacity-50' : ''} ${isSelected(b.id) ? 'bg-secondary/10' : ''}`}
+              empty={<tr><td colSpan={7} className="py-8 text-center font-ui text-xs uppercase tracking-widest text-base-content/40">No bookmarks found</td></tr>}
+              renderCells={(b, { handle, depth }) => (
+                <>
+                  <td className="py-3 pr-2">{handle}</td>
                   <td className="py-3 pr-3">
                     <input type="checkbox" checked={isSelected(b.id)} onChange={() => toggle(b.id)} className="cursor-pointer" />
                   </td>
-                  <td className="py-3 pr-4 font-ui text-sm">
-                    {/* Only server-owned bookmarks are editable (server 403s otherwise). */}
-                    {!b.deletedAt && ownActorId && b.actorId === ownActorId ? (
-                      <Link to={`/admin/bookmarks/${encodeURIComponent(b.id)}/edit`}
-                        className="hover:text-primary transition-colors">
-                        {b.title ?? b.id}
-                      </Link>
-                    ) : (b.title ?? b.id)}
+                  <td className={`py-3 pr-4 font-ui text-sm ${depth ? 'pl-6' : ''}`}>
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      {depth > 0 && <span className="text-base-content/30 shrink-0">&#8627;</span>}
+                      {/* Only server-owned bookmarks are editable (server 403s otherwise). */}
+                      {!b.deletedAt && ownActorId && b.actorId === ownActorId ? (
+                        <Link to={`/admin/bookmarks/${encodeURIComponent(b.id)}/edit`}
+                          className="hover:text-primary transition-colors truncate">
+                          {b.title ?? b.id}
+                        </Link>
+                      ) : <span className="truncate">{b.title ?? b.id}</span>}
+                    </span>
                   </td>
                   <td className="py-3 pr-4 font-ui text-xs text-base-content/50">{b.type}</td>
-                  <td className="py-3 pr-4 font-ui text-xs text-base-content/50">
-                    {folders.find((f) => f.id === b.parentFolder)?.title ?? '—'}
-                  </td>
                   <td className="py-3 pr-4 font-ui text-xs text-base-content/50 whitespace-nowrap">{fmtDate(b.createdAt)}</td>
                   <td className="py-3 pr-4">
                     <span className={`font-ui text-xs uppercase tracking-widest px-2 py-0.5 ${b.deletedAt ? 'bg-error/15 text-error' : 'bg-success/15 text-success'}`}>
@@ -190,13 +217,11 @@ export default function AdminBookmarksPage() {
                       </button>
                     )}
                   </td>
-                </tr>
-              ))}
-              {bookmarks.length === 0 && (
-                <tr><td colSpan={7} className="py-8 text-center font-ui text-xs uppercase tracking-widest text-base-content/40">No bookmarks found</td></tr>
+                </>
               )}
-            </tbody>
+            />
           </table>
+          </div>
 
           {pages > 1 && (
             <div className="flex items-center gap-3 mt-6">

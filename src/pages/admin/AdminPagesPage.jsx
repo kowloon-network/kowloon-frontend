@@ -6,6 +6,8 @@ import { useBatchSelect } from '../../hooks/useBatchSelect'
 import Spinner from '../../components/ui/Spinner'
 import BatchActionBar from '../../components/admin/BatchActionBar'
 import { AdminListHeader } from '../../components/admin/AdminPageHeader'
+import SortableTableBody from '../../components/admin/SortableTableBody'
+import { applyOrder } from '../../components/admin/sortOrder'
 
 function fmtDate(d) {
   if (!d) return '—'
@@ -19,13 +21,15 @@ export default function AdminPagesPage() {
   const [denied, setDenied] = useState(false)
   const [filter, setFilter] = useState('active')
   const [pending, setPending] = useState(false)
+  const [orderError, setOrderError] = useState(null)
   const { selected, toggle, selectAll, clear, isSelected, allSelected, someSelected, count } = useBatchSelect(pages)
 
   const load = useCallback(async () => {
     if (!client) return
     setLoading(true)
     try {
-      const params = {}
+      // limit 100: the whole list has to be here for drag-to-reorder.
+      const params = { limit: 100 }
       if (filter === 'deleted') params.showDeleted = true
       const res = await client.admin.getPages(params)
       setPages(res?.orderedItems ?? [])
@@ -38,6 +42,18 @@ export default function AdminPagesPage() {
 
   useEffect(() => { load() }, [load])
   useEffect(() => { clear() }, [filter])
+
+  // Drag-to-reorder: show the new order straight away, then save it.
+  const handleReorder = async (ids) => {
+    setOrderError(null)
+    setPages((prev) => applyOrder(prev, ids))
+    try {
+      await client.admin.reorderPages({ ids })
+    } catch (err) {
+      setOrderError(err?.message || "Couldn't save the new order.")
+      load()
+    }
+  }
 
   const handleDelete = async (pageId) => {
     setPending(true)
@@ -108,44 +124,54 @@ export default function AdminPagesPage() {
         onSoftDelete={handleBatchSoftDelete} onHardDelete={handleBatchHardDelete}
         onRestore={handleBatchRestore} onClear={clear} />
 
+      {orderError && <p className="font-ui text-sm text-error mb-3">{orderError}</p>}
+      {filter === 'active' && pages.length > 1 && (
+        <p className="font-ui text-xs text-base-content/50 mb-3">Drag the handle to change the order pages appear in.</p>
+      )}
+
       {loading ? <Spinner centered /> : (
+        <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b-2 border-base-300">
+              <th className="pb-2 pr-2 w-6" />
               <th className="pb-2 pr-3 w-6">
                 <input type="checkbox" checked={allSelected} ref={(el) => { if (el) el.indeterminate = someSelected }}
                   onChange={() => allSelected ? clear() : selectAll()}
                   className="cursor-pointer" />
               </th>
-              {['Type', 'Title', 'Slug', 'Visibility', 'Order', 'Date', ''].map((h) => (
+              {['Title', 'Type', 'Slug', 'Visibility', 'Date', ''].map((h) => (
                 <th key={h} className="font-ui text-xs uppercase tracking-widest text-base-content/50 text-left pb-2 pr-4 last:pr-0">{h}</th>
               ))}
             </tr>
           </thead>
-          <tbody>
-            {pages.map((p) => (
-              <tr key={p.id} className={`border-b border-base-300 hover:bg-base-200 ${p.deletedAt ? 'opacity-50' : ''} ${isSelected(p.id) ? 'bg-secondary/10' : ''}`}>
+          <SortableTableBody
+            items={pages}
+            parentKey="parentId"
+            enabled={filter === 'active'}
+            onReorder={handleReorder}
+            rowClassName={(p) => `border-b border-base-300 hover:bg-base-200 ${p.deletedAt ? 'opacity-50' : ''} ${isSelected(p.id) ? 'bg-secondary/10' : ''}`}
+            empty={<tr><td colSpan={8} className="py-8 text-center font-ui text-xs uppercase tracking-widest text-base-content/40">No pages found</td></tr>}
+            renderCells={(p, { handle, depth }) => (
+              <>
+                <td className="py-3 pr-2">{handle}</td>
                 <td className="py-3 pr-3">
                   <input type="checkbox" checked={isSelected(p.id)} onChange={() => toggle(p.id)} className="cursor-pointer" />
+                </td>
+                <td className={`py-3 pr-4 max-w-xs ${depth ? 'pl-6' : ''}`}>
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    {depth > 0 && <span className="text-base-content/30 shrink-0">&#8627;</span>}
+                    <Link to={`/admin/pages/${encodeURIComponent(p.id)}/edit`}
+                      className="font-ui text-sm hover:text-primary transition-colors text-left truncate block max-w-xs">
+                      {p.title}
+                    </Link>
+                  </span>
                 </td>
                 <td className="py-3 pr-4">
                   <span className="font-ui text-xs uppercase tracking-widest px-2 py-0.5 bg-base-200">{p.type ?? 'Page'}</span>
                 </td>
-                <td className="py-3 pr-4 max-w-xs">
-                  <Link to={`/admin/pages/${encodeURIComponent(p.id)}/edit`}
-                    className="font-ui text-sm hover:text-primary transition-colors text-left truncate block max-w-xs">
-                    {p.title}
-                  </Link>
-                  {p.parentId && (() => {
-                    const parent = pages.find((q) => q.id === p.parentId)
-                    return parent
-                      ? <span className="font-ui text-[10px] uppercase tracking-widest text-base-content/35">↳ {parent.title}</span>
-                      : null
-                  })()}
-                </td>
-                <td className="py-3 pr-4 font-mono text-xs text-base-content/50 max-w-32 truncate">{p.slug ?? '—'}</td>
-                <td className="py-3 pr-4 font-ui text-xs text-base-content/40 uppercase tracking-widest">{p.to ?? '—'}</td>
-                <td className="py-3 pr-4 font-ui text-xs text-base-content/50">{p.order ?? 0}</td>
+                <td className="py-3 pr-4 font-mono text-xs text-base-content/50 max-w-32 truncate">{p.slug ?? '--'}</td>
+                <td className="py-3 pr-4 font-ui text-xs text-base-content/40 uppercase tracking-widest">{p.to ?? '--'}</td>
                 <td className="py-3 pr-4 font-ui text-xs text-base-content/50 whitespace-nowrap">{fmtDate(p.createdAt)}</td>
                 <td className="py-3 text-right whitespace-nowrap">
                   {p.slug && (
@@ -166,13 +192,11 @@ export default function AdminPagesPage() {
                     </button>
                   )}
                 </td>
-              </tr>
-            ))}
-            {pages.length === 0 && (
-              <tr><td colSpan={8} className="py-8 text-center font-ui text-xs uppercase tracking-widest text-base-content/40">No pages found</td></tr>
+              </>
             )}
-          </tbody>
+          />
         </table>
+        </div>
       )}
     </div>
   )

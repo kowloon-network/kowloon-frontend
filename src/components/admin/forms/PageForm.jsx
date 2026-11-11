@@ -19,7 +19,6 @@ export default function PageForm({ initial, allPages = [], onSave, onCancel }) {
   const [summary, setSummary] = useState(initial?.summary ?? '')
   const [content, setContent] = useState(initial?.source?.content ?? '')
   const [to, setTo] = useState(initial?.to ?? '@public')
-  const [order, setOrder] = useState(initial?.order ?? 0)
   const [parentId, setParentId] = useState(initial?.parentId ?? '')
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(initial?.image ?? null)
@@ -74,7 +73,6 @@ export default function PageForm({ initial, allPages = [], onSave, onCancel }) {
         summary: summary || undefined,
         source: content ? { content, mediaType: 'text/markdown' } : undefined,
         to,
-        order: Number(order),
         parentId: parentId || null,
         ...(imageValue !== undefined || removeImage ? { image: imageValue } : {}),
       }
@@ -171,11 +169,6 @@ export default function PageForm({ initial, allPages = [], onSave, onCancel }) {
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="font-ui text-xs uppercase tracking-widest text-base-content/50">Order</label>
-          <input value={order} onChange={(e) => setOrder(e.target.value)} type="number"
-            className="border-2 border-base-300 focus:border-primary bg-base-100 px-3 py-2 font-ui text-sm outline-none" />
         </div>
       </div>
 
