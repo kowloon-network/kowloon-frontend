@@ -12,7 +12,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Plus, BookOpen, Bookmark, Mail, Compass, ExternalLink, ChevronRight, AlertTriangle,
+  BookOpen, Bookmark, Mail, Compass, ExternalLink, ChevronRight, AlertTriangle,
   Flag, Users, FileText, Circle, Users2, Palette, Settings, ScrollText,
 } from 'lucide-react'
 import { useClient } from '../../hooks/useClient'
@@ -164,14 +164,15 @@ export default function AdminDashboardPage() {
         : <ReportsTable flags={reports?.items ?? []} empty="No open reports." />}
 
       {/* 2. Quick actions */}
-      <div className="grid grid-cols-3 gap-2 mt-8">
+      <SectionTitle>Create new</SectionTitle>
+      <div className="grid grid-cols-3 gap-2">
         {QUICK_ACTIONS.map(({ to, label, icon: Icon }) => (
           <Link
             key={to}
             to={to}
             className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-2 py-3 border-2 border-base-300 hover:border-primary hover:text-primary transition-colors font-ui text-[11px] sm:text-xs uppercase tracking-widest text-base-content/70 text-center"
           >
-            <span className="flex items-center gap-1"><Plus size={12} /><Icon size={15} /></span>
+            <Icon size={18} />
             {label}
           </Link>
         ))}
