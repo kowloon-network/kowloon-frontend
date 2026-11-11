@@ -587,76 +587,6 @@ function EmojiEditor({ setting, client, onSaved }) {
   )
 }
 
-// ── Blocked domains editor ─────────────────────────────────────────────────
-
-function BlockedDomainsEditor({ setting, client, onSaved }) {
-  const toEntries = (v) => (v && typeof v === 'object' && !Array.isArray(v)) ? v : {}
-  const initial = toEntries(setting?.value)
-  const [blocked, setBlocked] = useState(initial)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [error, setError] = useState(null)
-  const [newDomain, setNewDomain] = useState('')
-  const [newReason, setNewReason] = useState('')
-
-  const dirty = JSON.stringify(blocked) !== JSON.stringify(initial)
-  const entries = Object.entries(blocked)
-
-  const addDomain = () => {
-    const d = newDomain.trim().toLowerCase().replace(/^https?:\/\//, '')
-    if (!d) return
-    setBlocked((p) => ({ ...p, [d]: newReason.trim() }))
-    setNewDomain(''); setNewReason('')
-  }
-  const removeDomain = (domain) => setBlocked((p) => {
-    const n = { ...p }; delete n[domain]; return n
-  })
-
-  const save = async () => {
-    setSaving(true); setError(null); setSaved(false)
-    try {
-      await client.admin.updateSetting({ settingId: setting.name, value: blocked })
-      onSaved(setting.name, blocked)
-      setSaved(true)
-    } catch (err) {
-      setError(err?.message || 'Save failed')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-3">
-      {entries.length === 0 && (
-        <p className="font-ui text-xs text-base-content/40 uppercase tracking-widest">No domains blocked.</p>
-      )}
-      <ul className="flex flex-col gap-1">
-        {entries.map(([domain, reason]) => (
-          <li key={domain} className="flex items-center gap-3 border border-base-300 bg-base-100 px-3 py-2">
-            <span className="font-mono text-sm flex-1">{domain}</span>
-            {reason && <span className="font-ui text-xs text-base-content/50 flex-1 truncate">{reason}</span>}
-            <button type="button" onClick={() => removeDomain(domain)} disabled={saving}
-              className="p-1 text-base-content/30 hover:text-error disabled:opacity-20"><X size={14} /></button>
-          </li>
-        ))}
-      </ul>
-      <div className="flex items-center gap-2 flex-wrap">
-        <input type="text" value={newDomain} onChange={(e) => setNewDomain(e.target.value)}
-          placeholder="example.com" onKeyDown={(e) => e.key === 'Enter' && addDomain()}
-          className="border border-base-300 focus:border-primary bg-base-100 px-3 py-1.5 font-mono text-sm outline-none w-44" />
-        <input type="text" value={newReason} onChange={(e) => setNewReason(e.target.value)}
-          placeholder="Reason (optional)" onKeyDown={(e) => e.key === 'Enter' && addDomain()}
-          className="border border-base-300 focus:border-primary bg-base-100 px-3 py-1.5 font-ui text-sm outline-none w-64" />
-        <button type="button" onClick={addDomain} disabled={!newDomain.trim()}
-          className="flex items-center gap-1.5 px-3 py-1.5 font-ui text-xs uppercase tracking-widest border border-base-300 hover:border-primary text-base-content/60 hover:text-base-content disabled:opacity-40 transition-colors">
-          <Plus size={13} /> Block
-        </button>
-      </div>
-      <SaveBar saving={saving} saved={saved} error={error} onSave={save} dirty={dirty} />
-    </div>
-  )
-}
-
 // ── Tab sections ───────────────────────────────────────────────────────────
 
 function GeneralSection({ settings, client, onSaved }) {
@@ -1102,12 +1032,11 @@ function FlagOptionsEditor({ setting, client, onSaved }) {
 function ModerationSection({ settings, client, onSaved }) {
   const get = (name) => settings.find((s) => s.name === name)
   const rulesSetting   = get('rules')
-  const blockedSetting = get('blocked')
   const flagSetting    = get('flagOptions')
 
   return (
     <div>
-      <SectionHeading title="Moderation" description="Community rules, blocked servers, and report categories." />
+      <SectionHeading title="Moderation" description="Community rules and report categories. Block lists are on the Moderation page." />
 
       {rulesSetting && (
         <div className="mb-10">
@@ -1116,16 +1045,6 @@ function ModerationSection({ settings, client, onSaved }) {
             Shown to new users at registration and on the public /rules page. Markdown supported.
           </p>
           <RulesEditor setting={rulesSetting} client={client} onSaved={onSaved} />
-        </div>
-      )}
-
-      {blockedSetting && (
-        <div className="py-8 border-t-2 border-base-300 mb-10">
-          <h3 className="font-display text-xl tracking-wide mb-1">Blocked domains</h3>
-          <p className="font-ui text-sm text-base-content/50 mb-4">
-            Content from these servers won't be delivered to your users.
-          </p>
-          <BlockedDomainsEditor setting={blockedSetting} client={client} onSaved={onSaved} />
         </div>
       )}
 

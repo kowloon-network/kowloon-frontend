@@ -1,11 +1,13 @@
-import { useState, useEffect, useCallback } from 'react'
+import { Fragment, useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Trash2, RotateCcw, Search, X } from 'lucide-react'
+import { useSelector } from 'react-redux'
+import { Trash2, RotateCcw, Search, X, Ban } from 'lucide-react'
 import { useClient } from '../../hooks/useClient'
 import { useBatchSelect } from '../../hooks/useBatchSelect'
 import Spinner from '../../components/ui/Spinner'
 import BatchActionBar from '../../components/admin/BatchActionBar'
 import { AdminListHeader } from '../../components/admin/AdminPageHeader'
+import { BAN_WARNING } from '../../components/admin/blocklistUtils'
 
 const SEARCH_DEBOUNCE_MS = 300
 const SEARCH_MIN_CHARS = 2
@@ -26,6 +28,11 @@ export default function AdminUsersPage() {
   const [pending, setPending] = useState(false)
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
+  const viewerId = useSelector((state) => state.auth?.user?.id)
+  const [banUser, setBanUser] = useState(null) // the user whose ban panel is open
+  const [banReason, setBanReason] = useState('')
+  const [banError, setBanError] = useState(null)
+  const [notice, setNotice] = useState(null)
   const { selected, toggle, selectAll, clear, isSelected, allSelected, someSelected, count } = useBatchSelect(users)
 
   // Debounced, and only actually searches once there's nothing (cleared) or
@@ -76,6 +83,37 @@ export default function AdminUsersPage() {
       setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, deletedAt: null, active: true } : u))
     } catch {}
     setPending(false)
+  }
+
+  const openBan = (u) => {
+    setBanUser(u)
+    setBanReason('')
+    setBanError(null)
+    setNotice(null)
+  }
+
+  // Banning = adding a local person to the server's Blocked list. The server
+  // permanently deletes the account and their posts, keeps the username
+  // reserved and bans their email. Not the same as Delete, which is reversible.
+  const handleBan = async () => {
+    if (!banUser) return
+    setPending(true)
+    setBanError(null)
+    try {
+      await client.admin.addToBlocklist({
+        list: 'blocked',
+        target: banUser.id,
+        summary: banReason.trim() || undefined,
+        confirmBan: true,
+      })
+      setNotice(`@${banUser.username} is banned. Their account and posts have been deleted.`)
+      setBanUser(null)
+      await load()
+    } catch (err) {
+      setBanError(err?.message || 'Could not ban this user.')
+    } finally {
+      setPending(false)
+    }
   }
 
   const handleBatchSoftDelete = async () => {
@@ -155,6 +193,8 @@ export default function AdminUsersPage() {
         onSoftDelete={handleBatchSoftDelete} onHardDelete={handleBatchHardDelete}
         onRestore={handleBatchRestore} onClear={clear} />
 
+      {notice && <p className="font-ui text-sm text-success border-l-4 border-success pl-3 mb-4 break-words">{notice}</p>}
+
       {loading ? <Spinner centered /> : (
         <>
           <table className="w-full">
@@ -171,7 +211,8 @@ export default function AdminUsersPage() {
             </thead>
             <tbody>
               {users.map((u) => (
-                <tr key={u.id} className={`border-b border-base-300 hover:bg-base-200 ${u.deletedAt ? 'opacity-50' : ''} ${isSelected(u.id) ? 'bg-secondary/10' : ''}`}>
+                <Fragment key={u.id}>
+                <tr className={`border-b border-base-300 hover:bg-base-200 ${u.deletedAt ? 'opacity-50' : ''} ${isSelected(u.id) ? 'bg-secondary/10' : ''}`}>
                   <td className="py-3 pr-3">
                     <input type="checkbox" checked={isSelected(u.id)} onChange={() => toggle(u.id)} className="cursor-pointer" />
                   </td>
@@ -188,7 +229,7 @@ export default function AdminUsersPage() {
                       {u.deletedAt ? 'Deleted' : 'Active'}
                     </span>
                   </td>
-                  <td className="py-3 text-right">
+                  <td className="py-3 text-right whitespace-nowrap">
                     {u.deletedAt ? (
                       <button onClick={() => handleRestore(u.id)} disabled={pending}
                         className="p-1 text-base-content/40 hover:text-success transition-colors disabled:opacity-30" title="Restore">
@@ -196,12 +237,53 @@ export default function AdminUsersPage() {
                       </button>
                     ) : (
                       <button onClick={() => handleDelete(u.id)} disabled={pending}
-                        className="p-1 text-base-content/40 hover:text-error transition-colors disabled:opacity-30" title="Delete">
+                        className="p-1 text-base-content/40 hover:text-error transition-colors disabled:opacity-30" title="Delete (can be restored)">
                         <Trash2 size={14} />
+                      </button>
+                    )}
+                    {u.id !== viewerId && (
+                      <button onClick={() => (banUser?.id === u.id ? setBanUser(null) : openBan(u))} disabled={pending}
+                        className="p-1 ml-1 text-base-content/40 hover:text-error transition-colors disabled:opacity-30" title="Ban (permanent)">
+                        <Ban size={14} />
                       </button>
                     )}
                   </td>
                 </tr>
+                {banUser?.id === u.id && (
+                  <tr className="border-b border-base-300">
+                    <td colSpan={7} className="py-4">
+                      <div className="border-2 border-error bg-error/5 p-4">
+                        <p className="font-ui text-xs uppercase tracking-widest text-error mb-2">Ban @{u.username}</p>
+                        <p className="font-reading text-base text-base-content">{BAN_WARNING(`@${u.username}`)}</p>
+                        <p className="font-reading text-sm text-base-content/60 mt-2">
+                          Their username stays reserved and their email address is banned. If you might want them back, use Delete instead -- it can be restored.
+                        </p>
+                        <label htmlFor={`ban-reason-${u.id}`} className="font-ui text-xs uppercase tracking-widest text-base-content/50 mt-4 mb-1 block">Reason</label>
+                        <textarea
+                          id={`ban-reason-${u.id}`}
+                          value={banReason}
+                          onChange={(e) => setBanReason(e.target.value)}
+                          rows={2}
+                          placeholder="Why are you banning them?"
+                          className="w-full px-3 py-2 border-2 border-base-300 focus:border-primary bg-base-100 font-reading text-sm outline-none transition-colors"
+                        />
+                        <p className="font-reading text-xs text-base-content/40 italic mt-1">Shown on the Blocked list. If that list is public, so is this.</p>
+                        {banError && <p className="font-ui text-sm text-error border-l-4 border-error pl-3 mt-3 break-words">{banError}</p>}
+                        <div className="flex flex-wrap gap-3 mt-4">
+                          <button type="button" onClick={handleBan} disabled={pending}
+                            className="px-5 py-2 bg-error text-error-content font-ui text-xs uppercase tracking-widest hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity">
+                            {pending ? 'Banning...' : `Ban @${u.username} permanently`}
+                          </button>
+                          <button type="button" onClick={() => setBanUser(null)} disabled={pending}
+                            className="px-4 py-1.5 border border-base-300 font-ui text-xs uppercase tracking-widest hover:bg-base-200 disabled:opacity-40 transition-colors">
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
               {users.length === 0 && (
                 <tr><td colSpan={7} className="py-8 text-center font-ui text-xs uppercase tracking-widest text-base-content/40">No users found</td></tr>

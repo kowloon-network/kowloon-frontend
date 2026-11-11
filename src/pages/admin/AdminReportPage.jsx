@@ -1,13 +1,15 @@
 // AdminReportPage -- one moderation report: what was reported, by whom, why,
 // and the four things an admin can do about it.
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useSelector } from 'react-redux'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, ExternalLink, Trash2, EyeOff, UserX, Flame } from 'lucide-react'
 import { useClient } from '../../hooks/useClient'
 import Spinner from '../../components/ui/Spinner'
 import sizedUrl from '../../lib/sizedUrl'
 import { StatusChip } from '../../components/admin/reports'
+import { localDomains, isLocalPersonId } from '../../components/admin/blocklistUtils'
 import { fmtDate, reasonLabel, targetPath, personName, TYPE_LABELS } from '../../components/admin/reportUtils'
 
 function Field({ label, children }) {
@@ -58,6 +60,8 @@ export default function AdminReportPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [done, setDone] = useState(null)
+  const viewerId = useSelector((state) => state.auth?.user?.id)
+  const locals = useMemo(() => localDomains(viewerId), [viewerId])
 
   const load = useCallback(async () => {
     if (!client) return
@@ -84,7 +88,7 @@ export default function AdminReportPage() {
       setDone(doneText)
       await load()
     } catch (err) {
-      setError(err?.message || 'That didn’t work. Try again.')
+      setError(err?.message || 'That didn\'t work. Try again.')
     } finally {
       setBusy(false)
     }
@@ -111,6 +115,9 @@ export default function AdminReportPage() {
   const path = targetPath(flag)
   const isOpen = flag.status === 'open'
   const authorName = personName(flag.targetActor, flag.targetActorId)
+  // A local author can't just be blocked: putting them on Blocked is a ban,
+  // which permanently deletes their account (the server insists on confirmBan).
+  const authorIsLocal = isLocalPersonId(flag.targetActor?.id || flag.targetActorId, locals)
   const images = [
     ...(t.image ? [{ url: t.image, mediaType: 'image/' }] : []),
     ...(t.attachments || []).filter((a) => a?.mediaType?.startsWith('image/')),
@@ -195,19 +202,35 @@ export default function AdminReportPage() {
                 'Removed. The reporter and the author have been told.',
               )}
             />
-            <ActionButton
-              icon={UserX}
-              label="Block creator"
-              hint="Close the author's account and sign them out."
-              danger
-              busy={busy}
-              disabled={!flag.targetActorId}
-              onClick={() => run(
-                `Close ${authorName}'s account? They'll be signed out straight away. You can restore it from Users.`,
-                () => client.admin.blockFlaggedAuthor({ flagId: flag.id }),
-                `${authorName}'s account is closed. The reporter has been told.`,
-              )}
-            />
+            {authorIsLocal ? (
+              <ActionButton
+                icon={UserX}
+                label="Ban author"
+                hint="Permanently deletes their account and everything they posted."
+                danger
+                busy={busy}
+                disabled={!flag.targetActorId}
+                onClick={() => run(
+                  `Ban ${authorName}?\n\nThis permanently deletes ${authorName}'s account and everything they posted. It can't be undone. Use this only for known malicious accounts.\n\nTheir username stays reserved and their email address is banned.`,
+                  () => client.admin.blockFlaggedAuthor({ flagId: flag.id, confirmBan: true }),
+                  `${authorName} is banned. Their account and posts have been deleted, and the reporter has been told.`,
+                )}
+              />
+            ) : (
+              <ActionButton
+                icon={UserX}
+                label="Block creator"
+                hint="Refuse everything they send this server. Adds them to the Blocked list."
+                danger
+                busy={busy}
+                disabled={!flag.targetActorId}
+                onClick={() => run(
+                  `Block ${authorName}? Everything they send this server will be refused. You can undo this from Moderation > Blocked.`,
+                  () => client.admin.blockFlaggedAuthor({ flagId: flag.id }),
+                  `${authorName} is on the Blocked list. The reporter has been told.`,
+                )}
+              />
+            )}
             <ActionButton
               icon={Flame}
               label="Delete permanently"
