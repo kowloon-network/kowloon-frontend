@@ -107,6 +107,7 @@ const router = createBrowserRouter([
       { path: '/admin/circles',    lazy: lazyRoute(() => import('../pages/admin/AdminCirclesPage')) },
       { path: '/admin/invites',    lazy: lazyRoute(() => import('../pages/admin/AdminInvitesPage')) },
       { path: '/admin/moderation', lazy: lazyRoute(() => import('../pages/admin/AdminModerationPage')) },
+      { path: '/admin/moderation/:id', lazy: lazyRoute(() => import('../pages/admin/AdminReportPage')) },
       { path: '/admin/themes',     lazy: lazyRoute(() => import('../pages/admin/AdminThemesPage')) },
       { path: '/admin/settings',   lazy: lazyRoute(() => import('../pages/admin/AdminSettingsPage')) },
       { path: '/admin/pages',      lazy: lazyRoute(() => import('../pages/admin/AdminPagesPage')) },
