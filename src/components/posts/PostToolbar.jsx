@@ -228,7 +228,8 @@ function PostMoreMenu({ post, t, user, onDeleted }) {
   const isOwner = !!user?.id && !!authorId && user.id === authorId
   const isSelf = isOwner
   const canReport = !!user
-  const isAdmin = !!user?.isServerAdmin
+  // Admins and moderators can feature posts on Discover.
+  const isAdmin = !!(user?.isServerAdmin || user?.isServerMod)
 
   const localUrl = post?.id
     ? `${window.location.origin}/posts/${encodeURIComponent(post.id)}`

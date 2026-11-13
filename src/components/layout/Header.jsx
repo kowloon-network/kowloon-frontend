@@ -248,7 +248,7 @@ export function Header() {
                     {t('nav.myCircles', { defaultValue: 'My Circles' })}
                   </Link>
                 </li>
-                {user?.isServerAdmin && (
+                {(user?.isServerAdmin || user?.isServerMod) && (
                   <li>
                     <Link to="/admin" className="block px-4 py-3 font-ui text-xs uppercase tracking-widest text-base-content/70 dark:text-white/95 hover:text-primary hover:bg-base-200 dark:hover:bg-base-200 transition-colors">
                       {t('nav.admin', { defaultValue: 'Admin' })}

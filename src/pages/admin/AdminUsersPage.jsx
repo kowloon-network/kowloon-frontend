@@ -6,6 +6,7 @@ import { useClient } from '../../hooks/useClient'
 import { useBatchSelect } from '../../hooks/useBatchSelect'
 import Spinner from '../../components/ui/Spinner'
 import BatchActionBar from '../../components/admin/BatchActionBar'
+import { useStaffRole } from '../../lib/staff'
 import { AdminListHeader } from '../../components/admin/AdminPageHeader'
 import { BAN_WARNING } from '../../components/admin/blocklistUtils'
 
@@ -18,6 +19,8 @@ function fmtDate(d) {
 }
 
 export default function AdminUsersPage() {
+  // Moderators can view, close and restore accounts -- not create, ban or erase.
+  const isMod = useStaffRole() === 'mod'
   const client = useClient()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -154,7 +157,7 @@ export default function AdminUsersPage() {
     <div>
       <AdminListHeader
         title="Users"
-        newTo="/admin/users/new"
+        newTo={isMod ? undefined : '/admin/users/new'}
         newLabel="New user"
         aside={<span className="font-ui text-xs uppercase tracking-widest text-base-content/40">{total} total</span>}
       />
@@ -190,7 +193,7 @@ export default function AdminUsersPage() {
       </div>
 
       <BatchActionBar count={count} filter={filter} busy={pending}
-        onSoftDelete={handleBatchSoftDelete} onHardDelete={handleBatchHardDelete}
+        onSoftDelete={handleBatchSoftDelete} onHardDelete={isMod ? undefined : handleBatchHardDelete}
         onRestore={handleBatchRestore} onClear={clear} />
 
       {notice && <p className="font-ui text-sm text-success border-l-4 border-success pl-3 mb-4 break-words">{notice}</p>}
@@ -241,7 +244,7 @@ export default function AdminUsersPage() {
                         <Trash2 size={14} />
                       </button>
                     )}
-                    {u.id !== viewerId && (
+                    {u.id !== viewerId && !isMod && (
                       <button onClick={() => (banUser?.id === u.id ? setBanUser(null) : openBan(u))} disabled={pending}
                         className="p-1 ml-1 text-base-content/40 hover:text-error transition-colors disabled:opacity-30" title="Ban (permanent)">
                         <Ban size={14} />

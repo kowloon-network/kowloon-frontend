@@ -10,6 +10,7 @@ import Spinner from '../../components/ui/Spinner'
 import sizedUrl from '../../lib/sizedUrl'
 import { StatusChip } from '../../components/admin/reports'
 import { localDomains, isLocalPersonId } from '../../components/admin/blocklistUtils'
+import { useStaffRole } from '../../lib/staff'
 import { fmtDate, reasonLabel, targetPath, personName, TYPE_LABELS } from '../../components/admin/reportUtils'
 
 function Field({ label, children }) {
@@ -54,6 +55,7 @@ function ActionButton({ icon: Icon, label, hint, onClick, busy, danger, disabled
 export default function AdminReportPage() {
   const { id } = useParams()
   const client = useClient()
+  const isMod = useStaffRole() === 'mod'
   const [flag, setFlag] = useState(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -202,7 +204,11 @@ export default function AdminReportPage() {
                 'Removed. The reporter and the author have been told.',
               )}
             />
-            {authorIsLocal ? (
+            {authorIsLocal && isMod ? (
+              <p className="font-ui text-xs text-base-content/50 py-2">
+                Banning a member is an admin's call. If this needs a ban, tell an admin -- or remove the {typeLabel.toLowerCase()} now and leave the ban to them.
+              </p>
+            ) : authorIsLocal ? (
               <ActionButton
                 icon={UserX}
                 label="Ban author"

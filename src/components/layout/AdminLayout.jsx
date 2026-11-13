@@ -11,6 +11,7 @@ import {
   Menu, X, ScrollText, Compass,
 } from 'lucide-react'
 import sizedUrl from '../../lib/sizedUrl'
+import { staffRole, MOD_SECTIONS } from '../../lib/staff'
 
 // Ungrouped items (just Dashboard) render with no subtitle above them;
 // everything else is grouped under the subtitle the group is keyed by.
@@ -53,6 +54,7 @@ const NAV_GROUPS = [
 function SidebarContent() {
   const server = useSelector((state) => state.server)
   const user = useSelector((state) => state.auth.user)
+  const role = staffRole(user)
   const serverName = server.name || 'Kowloon'
   const avatarUrl = user?.profile?.icon ?? null
   const displayName = user?.profile?.name || user?.username
@@ -73,7 +75,10 @@ function SidebarContent() {
       </div>
 
       <nav className="flex flex-col py-2 flex-1" aria-label="Admin navigation">
-        {NAV_GROUPS.map(({ label, items }) => (
+        {NAV_GROUPS
+          .map((g) => ({ ...g, items: role === 'admin' ? g.items : g.items.filter((i) => MOD_SECTIONS.has(i.to)) }))
+          .filter((g) => g.items.length)
+          .map(({ label, items }) => (
           <div key={label ?? 'top'}>
             {label && (
               <p className="px-5 pt-4 pb-1 font-ui text-[10px] uppercase tracking-widest text-secondary-content/40">
@@ -152,9 +157,9 @@ export default function AdminLayout() {
   if (!sessionChecked) return null
   if (!user) return <Navigate to="/login" replace />
   // Non-admins get bounced home rather than an admin shell full of 403s
-  // (the server enforces this regardless; isServerAdmin comes from login
-  // and /auth/me).
-  if (!user.isServerAdmin) return <Navigate to="/" replace />
+  // (the server enforces this regardless). Moderators get in too, and see
+  // only their sections (lib/staff.js).
+  if (!staffRole(user)) return <Navigate to="/" replace />
 
   return (
     <div className="h-screen flex overflow-hidden">

@@ -296,7 +296,7 @@ export default function GroupPage() {
                 {t('group.inviteOnly', { defaultValue: 'Invite only' })}
               </span>
             )}
-            {authUser?.isServerAdmin && (
+            {(authUser?.isServerAdmin || authUser?.isServerMod) && (
               <button
                 onClick={() => setDiscoveryOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 border border-base-300 font-ui text-xs uppercase tracking-widest text-base-content/60 hover:border-primary hover:text-primary transition-colors"
@@ -429,7 +429,7 @@ export default function GroupPage() {
         />
       )}
 
-      {authUser?.isServerAdmin && (
+      {(authUser?.isServerAdmin || authUser?.isServerMod) && (
         <AddToDiscoveryModal
           item={group}
           refType="Group"

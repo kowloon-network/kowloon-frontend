@@ -642,8 +642,10 @@ function GeneralSection({ settings, client, onSaved }) {
       <div className="mt-8 pt-8 border-t-2 border-base-300">
         <h3 className="font-display text-xl tracking-wide mb-1">Moderators</h3>
         <p className="font-ui text-sm text-base-content/50 mb-4">
-          Members of the mod circle can review flagged content and take moderation actions.
-          Changes take effect immediately.
+          Moderators handle reports, block people and servers (admins are told when they
+          defederate one), close and restore accounts, and add or edit Pages, Bookmarks,
+          Discover and server circles. They can't ban members, delete content, or change
+          settings, invites or themes. Changes take effect immediately.
         </p>
         <CircleMemberPicker role="mod" client={client} />
       </div>

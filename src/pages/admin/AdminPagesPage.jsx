@@ -8,6 +8,7 @@ import BatchActionBar from '../../components/admin/BatchActionBar'
 import { AdminListHeader } from '../../components/admin/AdminPageHeader'
 import SortableTableBody from '../../components/admin/SortableTableBody'
 import { applyOrder } from '../../components/admin/sortOrder'
+import { useStaffRole } from '../../lib/staff'
 
 function fmtDate(d) {
   if (!d) return '—'
@@ -16,6 +17,7 @@ function fmtDate(d) {
 
 export default function AdminPagesPage() {
   const client = useClient()
+  const isMod = useStaffRole() === 'mod' // moderators add and edit, but don't delete
   const [pages, setPages] = useState([])
   const [loading, setLoading] = useState(true)
   const [denied, setDenied] = useState(false)
@@ -121,7 +123,7 @@ export default function AdminPagesPage() {
       </div>
 
       <BatchActionBar count={count} filter={filter} busy={pending}
-        onSoftDelete={handleBatchSoftDelete} onHardDelete={handleBatchHardDelete}
+        onSoftDelete={isMod ? undefined : handleBatchSoftDelete} onHardDelete={isMod ? undefined : handleBatchHardDelete}
         onRestore={handleBatchRestore} onClear={clear} />
 
       {orderError && <p className="font-ui text-sm text-error mb-3">{orderError}</p>}
@@ -185,12 +187,12 @@ export default function AdminPagesPage() {
                       className="p-1 text-base-content/40 hover:text-success transition-colors disabled:opacity-30" title="Restore">
                       <RotateCcw size={14} />
                     </button>
-                  ) : (
+                  ) : !isMod ? (
                     <button onClick={() => handleDelete(p.id)} disabled={!!pending}
                       className="p-1 text-base-content/40 hover:text-error transition-colors disabled:opacity-30" title="Delete">
                       <Trash2 size={14} />
                     </button>
-                  )}
+                  ) : null}
                 </td>
               </>
             )}

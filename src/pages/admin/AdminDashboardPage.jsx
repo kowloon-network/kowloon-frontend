@@ -18,6 +18,7 @@ import {
 import { useClient } from '../../hooks/useClient'
 import Spinner from '../../components/ui/Spinner'
 import { ReportsTable } from '../../components/admin/reports'
+import { useStaffRole, MOD_SECTIONS } from '../../lib/staff'
 
 const REPORTS_SHOWN = 5
 
@@ -100,6 +101,9 @@ function HealthRow({ label, value }) {
 
 export default function AdminDashboardPage() {
   const client = useClient()
+  const role = useStaffRole()
+  // Moderators only see what they can open (lib/staff.js).
+  const allowed = (to) => role === 'admin' || MOD_SECTIONS.has(to.replace(/\/new$/, ''))
   const [stats, setStats] = useState(null)
   const [reports, setReports] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -152,10 +156,10 @@ export default function AdminDashboardPage() {
       {/* 1. Your community */}
       <SectionTitle first>Your community</SectionTitle>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        <CommunityTile label="Members" value={c.users} sub={a.newUsersWeek != null ? `${a.newUsersWeek} new this week` : null} to="/admin/users" />
-        <CommunityTile label="Posts today" value={a.postsToday} sub={c.posts != null ? `${c.posts} in all` : null} to="/admin/posts" />
-        <CommunityTile label="Groups" value={c.groups} to="/admin/groups" />
-        <CommunityTile label="Invites" value={c.activeInvites} sub={a.invitesUsed != null ? `active -- ${a.invitesUsed} used` : 'active'} to="/admin/invites" />
+        <CommunityTile label="Members" value={c.users} sub={a.newUsersWeek != null ? `${a.newUsersWeek} new this week` : null} to={allowed('/admin/users') ? '/admin/users' : undefined} />
+        <CommunityTile label="Posts today" value={a.postsToday} sub={c.posts != null ? `${c.posts} in all` : null} to={allowed('/admin/posts') ? '/admin/posts' : undefined} />
+        <CommunityTile label="Groups" value={c.groups} to={allowed('/admin/groups') ? '/admin/groups' : undefined} />
+        <CommunityTile label="Invites" value={c.activeInvites} sub={a.invitesUsed != null ? `active -- ${a.invitesUsed} used` : 'active'} to={allowed('/admin/invites') ? '/admin/invites' : undefined} />
       </div>
 
       {/* 2. Moderation */}
@@ -181,7 +185,7 @@ export default function AdminDashboardPage() {
       {/* 3. Quick actions */}
       <SectionTitle>Create new</SectionTitle>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {QUICK_ACTIONS.map(({ to, label, icon: Icon }) => (
+        {QUICK_ACTIONS.filter((q) => allowed(q.to)).map(({ to, label, icon: Icon }) => (
           <Link
             key={to}
             to={to}
@@ -195,7 +199,7 @@ export default function AdminDashboardPage() {
 
       {/* 4. Sections -- the desktop sidebar already lists these */}
       <div className="lg:hidden">
-        {SECTIONS.map((group) => (
+        {SECTIONS.map((g) => ({ ...g, items: g.items.filter((i) => allowed(i.to)) })).filter((g) => g.items.length).map((group) => (
           <div key={group.label}>
             <SectionTitle>{group.label}</SectionTitle>
             <div className="border-t border-base-300">

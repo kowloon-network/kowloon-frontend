@@ -3,7 +3,8 @@ import { Trash2, Flame, RotateCcw, X } from 'lucide-react'
 export default function BatchActionBar({ count, filter, onSoftDelete, onHardDelete, onRestore, onClear, busy }) {
   if (count === 0) return null
 
-  const canDelete = filter !== 'deleted'
+  // A handler left out hides its button (moderators can't delete content).
+  const canDelete = filter !== 'deleted' && !!onSoftDelete
   const canRestore = filter === 'deleted'
 
   return (
@@ -22,6 +23,7 @@ export default function BatchActionBar({ count, filter, onSoftDelete, onHardDele
             <Trash2 size={12} /> Delete
           </button>
         )}
+        {onHardDelete && (
         <button
           onClick={onHardDelete}
           disabled={busy}
@@ -30,6 +32,7 @@ export default function BatchActionBar({ count, filter, onSoftDelete, onHardDele
         >
           <Flame size={12} /> Hard Delete
         </button>
+        )}
         {canRestore && (
           <button
             onClick={onRestore}

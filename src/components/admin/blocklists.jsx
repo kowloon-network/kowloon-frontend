@@ -10,6 +10,7 @@ import Spinner from '../ui/Spinner'
 import {
   localDomains, parseTarget, isLocalPersonId, errStatus, fmtDay, BAN_WARNING,
 } from './blocklistUtils'
+import { useStaffRole } from '../../lib/staff'
 
 const LABEL = 'font-ui text-xs uppercase tracking-widest text-base-content/50 mb-1 block'
 const INPUT = 'w-full px-3 py-2 border-2 border-base-300 focus:border-primary bg-base-100 font-ui text-sm outline-none transition-colors'
@@ -61,7 +62,7 @@ function BanConfirm({ name, message, busy, onConfirm, onCancel }) {
   )
 }
 
-function MemberRow({ member, list, banned, busy, onSaveSummary, onRemove }) {
+function MemberRow({ member, list, banned, busy, onSaveSummary, onRemove, canRemove = true }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(member.summary || '')
   const [saving, setSaving] = useState(false)
@@ -86,6 +87,7 @@ function MemberRow({ member, list, banned, busy, onSaveSummary, onRemove }) {
             <span className="font-ui text-xs text-base-content/40">Added {fmtDay(member.createdAt)}</span>
           </div>
         </div>
+        {canRemove && (
         <button
           type="button"
           onClick={() => onRemove(member)}
@@ -96,6 +98,7 @@ function MemberRow({ member, list, banned, busy, onSaveSummary, onRemove }) {
         >
           <X size={16} />
         </button>
+        )}
       </div>
 
       <div className="mt-3 sm:ml-13">
@@ -202,6 +205,8 @@ export function BlocklistTab({ client, list }) {
   const [summary, setSummary] = useState('')
   const [busy, setBusy] = useState(false)
   const [pendingBan, setPendingBan] = useState(null) // { name, message }
+  // Moderators can't ban or unban members, or change who sees the list.
+  const isMod = useStaffRole() === 'mod'
 
   const load = useCallback(async () => {
     if (!client) return
@@ -225,6 +230,10 @@ export function BlocklistTab({ client, list }) {
     if (!parsed) { setError('That doesn\'t look like a person or a server.'); return }
     if (list === 'defederated' && parsed.kind === 'person') {
       setError('Defederated is for servers only. To block a person, use Blocked.')
+      return
+    }
+    if (isMod && parsed.kind === 'person' && locals.has(parsed.domain)) {
+      setError('Only an admin can ban a member of this server. Report it to an admin, or close their account from Users.')
       return
     }
     if (!confirmBan && parsed.kind === 'person' && locals.has(parsed.domain)) {
@@ -318,11 +327,13 @@ export function BlocklistTab({ client, list }) {
       ))}
 
       <div className="mt-4">
-        {list === 'blocked' && data ? (
+        {list === 'blocked' && data && !isMod ? (
           <VisibilityToggle isPublic={!!data.isPublic} busy={busy} onChange={setVisibility} />
         ) : (
           <p className="flex items-center gap-1.5 font-ui text-xs uppercase tracking-widest text-base-content/50 mb-6">
-            <Lock size={12} /> Private -- admins only
+            {list === 'blocked' && isMod
+              ? <>{data?.isPublic ? 'Public -- anyone can see this list' : 'Private -- staff only'}</>
+              : <><Lock size={12} /> Private -- admins and moderators only</>}
           </p>
         )}
       </div>
@@ -354,6 +365,9 @@ export function BlocklistTab({ client, list }) {
           className={`${INPUT} font-reading`}
         />
         <p className="font-reading text-xs text-base-content/40 italic mt-1">{copy.reasonHint}</p>
+        {isMod && list === 'defederated' && (
+          <p className="font-reading text-xs text-base-content/40 italic mt-1">Every admin is told when a moderator defederates a server or lifts it.</p>
+        )}
 
         {pendingBan ? (
           <BanConfirm
@@ -388,6 +402,7 @@ export function BlocklistTab({ client, list }) {
               member={m}
               list={list}
               banned={m.type !== 'Server' && isLocalPersonId(m.id, locals)}
+              canRemove={!(isMod && m.type !== 'Server' && isLocalPersonId(m.id, locals))}
               busy={busy}
               onSaveSummary={saveSummary}
               onRemove={remove}

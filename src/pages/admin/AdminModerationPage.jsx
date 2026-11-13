@@ -6,9 +6,11 @@ import { ReportsTable } from '../../components/admin/reports'
 import { useClient } from '../../hooks/useClient'
 import Spinner from '../../components/ui/Spinner'
 import { BlocklistTab, BannedEmailsTab } from '../../components/admin/blocklists'
+import { useStaffRole } from '../../lib/staff'
 
 export default function AdminModerationPage() {
   const client = useClient()
+  const isMod = useStaffRole() === 'mod'
   const [tab, setTab] = useState('reports')
   const [flags, setFlags] = useState([])
   const [loading, setLoading] = useState(true)
@@ -46,7 +48,7 @@ export default function AdminModerationPage() {
       </div>
 
       <div className="flex flex-wrap gap-x-4 sm:gap-x-6 gap-y-1 border-b-2 border-base-300 mb-6">
-        {[['reports', 'Reports'], ['blocked', 'Blocked'], ['defederated', 'Defederated'], ['emails', 'Emails']].map(([val, label]) => (
+        {[['reports', 'Reports'], ['blocked', 'Blocked'], ['defederated', 'Defederated'], ...(isMod ? [] : [['emails', 'Emails']])].map(([val, label]) => (
           <button key={val} onClick={() => setTab(val)}
             className={`pb-3 -mb-0.5 font-display text-base sm:text-xl tracking-wide border-b-2 transition-colors ${
               tab === val ? 'border-primary text-base-content' : 'border-transparent text-base-content/40 hover:text-base-content/70'

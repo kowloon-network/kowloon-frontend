@@ -393,12 +393,15 @@ export default function CirclePage() {
   const isBlockedCircle = isSystem && circle.name === 'Blocked'
   const isMutedCircle = isSystem && circle.name === 'Muted'
   const showFinder = isOwner && members.length === 0 && !isSystemManaged
-  // Admins manage this server's own circles (owned by "@<domain>") as if
+  // Admins and moderators manage this server's own circles (owned by "@<domain>") as if
   // they were the owner -- except its System circles (Blocked, Defederated,
   // admins, moderators), which have their own screens in the admin panel.
   const ownDomain = authUser?.id?.split('@')[2]
   const isServerCircle = !!ownDomain && circle.actorId === `@${ownDomain}`
-  const canManage = isOwner || (!!authUser?.isServerAdmin && isServerCircle && !isSystem)
+  const isStaff = !!(authUser?.isServerAdmin || authUser?.isServerMod)
+  const canManage = isOwner || (isStaff && isServerCircle && !isSystem)
+  // Moderators add and edit server circles but don't delete them.
+  const canDelete = !isSystem && (isOwner || (!!authUser?.isServerAdmin && isServerCircle))
   const currentIcon = editing ? editIconPreview : circle.icon
 
   return (
@@ -561,7 +564,7 @@ export default function CirclePage() {
                     {reactCount > 0 ? reactCount : t('circle.heart', { defaultValue: 'Heart' })}
                   </button>
                 )}
-                {authUser?.isServerAdmin && (
+                {(authUser?.isServerAdmin || authUser?.isServerMod) && (
                   <button
                     onClick={() => setDiscoveryOpen(true)}
                     className="flex items-center gap-1.5 px-3 py-1.5 border border-base-300 font-ui text-xs uppercase tracking-widest text-base-content/60 hover:border-primary hover:text-primary transition-colors"
@@ -580,7 +583,7 @@ export default function CirclePage() {
                     </button>
                     {/* System circles (Following, Groups, Blocked, Muted, …) are
                         fixed identity — never deletable, see isSystem above. */}
-                    {!isSystem && (
+                    {canDelete && (
                       <button
                         onClick={handleDelete}
                         disabled={deleting}
@@ -699,7 +702,7 @@ export default function CirclePage() {
         </Modal>
       )}
 
-      {authUser?.isServerAdmin && (
+      {(authUser?.isServerAdmin || authUser?.isServerMod) && (
         <AddToDiscoveryModal
           item={circle}
           refType="Circle"

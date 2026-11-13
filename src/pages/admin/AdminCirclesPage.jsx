@@ -7,6 +7,7 @@ import Spinner from '../../components/ui/Spinner'
 import BatchActionBar from '../../components/admin/BatchActionBar'
 import { AdminListHeader } from '../../components/admin/AdminPageHeader'
 import AddToDiscoveryModal from '../../components/discover/AddToDiscoveryModal'
+import { useStaffRole } from '../../lib/staff'
 
 function fmtDate(d) {
   if (!d) return '—'
@@ -26,6 +27,7 @@ function serverActorId(client) {
 
 export default function AdminCirclesPage() {
   const client = useClient()
+  const isMod = useStaffRole() === 'mod' // moderators add and edit, but don't delete
   const [circles, setCircles] = useState([])
   const [loading, setLoading] = useState(true)
   const [denied, setDenied] = useState(false)
@@ -126,7 +128,7 @@ export default function AdminCirclesPage() {
       </div>
 
       <BatchActionBar count={count} filter={filter} busy={pending}
-        onSoftDelete={handleBatchSoftDelete} onHardDelete={handleBatchHardDelete}
+        onSoftDelete={isMod ? undefined : handleBatchSoftDelete} onHardDelete={isMod ? undefined : handleBatchHardDelete}
         onRestore={handleBatchRestore} onClear={clear} />
 
       {loading ? <Spinner centered /> : (
@@ -189,7 +191,7 @@ export default function AdminCirclesPage() {
                         <RotateCcw size={14} />
                       </button>
                     ) : (
-                      !c.deletedAt && ownActorId && c.actorId === ownActorId && (
+                      !isMod && !c.deletedAt && ownActorId && c.actorId === ownActorId && (
                         <button onClick={() => handleDelete(c.id)} disabled={pending}
                           className="p-1 text-base-content/40 hover:text-error transition-colors disabled:opacity-30" title="Delete">
                           <Trash2 size={14} />
