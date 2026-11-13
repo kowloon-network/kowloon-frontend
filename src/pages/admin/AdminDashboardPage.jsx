@@ -25,6 +25,7 @@ const QUICK_ACTIONS = [
   { to: '/admin/invites/new',   label: 'Invite',   icon: Mail },
   { to: '/admin/pages/new',     label: 'Page',     icon: BookOpen },
   { to: '/admin/bookmarks/new', label: 'Bookmark', icon: Bookmark },
+  { to: '/admin/circles/new',   label: 'Circle',   icon: Circle },
 ]
 
 const SECTIONS = [
@@ -179,7 +180,7 @@ export default function AdminDashboardPage() {
 
       {/* 3. Quick actions */}
       <SectionTitle>Create new</SectionTitle>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {QUICK_ACTIONS.map(({ to, label, icon: Icon }) => (
           <Link
             key={to}
