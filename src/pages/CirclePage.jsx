@@ -336,7 +336,9 @@ export default function CirclePage() {
     setDeleting(true)
     try {
       await client.activities.deleteCircle({ circleId: circle.id })
-      navigate('/circles', { replace: true })
+      // A server circle (owner "@domain") was deleted by an admin: back to the admin list.
+      const serverOwned = /^@[^@]+$/.test(circle.actorId || '')
+      navigate(serverOwned ? '/admin/circles' : '/circles', { replace: true })
     } catch (err) {
       setError(err.message || 'Failed to delete circle.')
       setDeleting(false)
@@ -391,6 +393,12 @@ export default function CirclePage() {
   const isBlockedCircle = isSystem && circle.name === 'Blocked'
   const isMutedCircle = isSystem && circle.name === 'Muted'
   const showFinder = isOwner && members.length === 0 && !isSystemManaged
+  // Admins manage this server's own circles (owned by "@<domain>") as if
+  // they were the owner -- except its System circles (Blocked, Defederated,
+  // admins, moderators), which have their own screens in the admin panel.
+  const ownDomain = authUser?.id?.split('@')[2]
+  const isServerCircle = !!ownDomain && circle.actorId === `@${ownDomain}`
+  const canManage = isOwner || (!!authUser?.isServerAdmin && isServerCircle && !isSystem)
   const currentIcon = editing ? editIconPreview : circle.icon
 
   return (
@@ -561,7 +569,7 @@ export default function CirclePage() {
                     <Compass size={12} /> {t('discovery.addTitle', { defaultValue: 'Add to Discovery' })}
                   </button>
                 )}
-                {isOwner && (
+                {canManage && (
                   <>
                     <button
                       onClick={startEditing}
@@ -594,7 +602,7 @@ export default function CirclePage() {
       <div className="flex flex-col gap-3">
         <h2 className="font-display text-2xl tracking-wide">{t('circle.members')}</h2>
 
-        {isOwner && (
+        {canManage && (
           <AddMemberRow circleId={circle.id} onAdded={handleMemberAdded} />
         )}
 
@@ -604,7 +612,7 @@ export default function CirclePage() {
               <MemberRow
                 key={member.id}
                 member={member}
-                isOwner={isOwner}
+                isOwner={canManage}
                 onRemove={handleRemoveMember}
                 removing={removingId === member.id}
               />
