@@ -412,7 +412,7 @@ export default function CirclePage() {
           transform: `translate(${shadowProgress * -3}px, ${shadowProgress * -3}px)`,
         }}
       >
-        <div className="flex items-start gap-4">
+        <div className="flex flex-wrap sm:flex-nowrap items-start gap-4">
 
           {/* Icon — clickable in edit mode */}
           <button
@@ -437,7 +437,7 @@ export default function CirclePage() {
           />
 
           {/* Info */}
-          <div className="flex flex-col gap-3 min-w-0 pt-1 flex-1">
+          <div className="flex flex-col gap-3 min-w-0 pt-1 flex-1 basis-48">
             {editing && !isSystem ? (
               <input
                 type="text"
@@ -449,7 +449,7 @@ export default function CirclePage() {
               <h1 className="font-display text-4xl leading-none tracking-wide">{circle.name}</h1>
             )}
 
-            <div className="flex items-center gap-2 font-ui text-xs uppercase tracking-widest text-base-content/60">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-ui text-xs uppercase tracking-widest text-base-content/60">
               {circle.actorId && (
                 <Link to={`/users/${encodeURIComponent(circle.actorId)}`} className="hover:text-primary transition-colors">
                   {circle.actor?.name ?? circle.actorId}
@@ -516,8 +516,8 @@ export default function CirclePage() {
             )}
           </div>
 
-          {/* Actions */}
-          <div className="flex flex-col items-end gap-2 shrink-0 pt-1">
+          {/* Actions -- a row under the title on phones, a column beside it from sm up */}
+          <div className="flex flex-row flex-wrap sm:flex-col items-start sm:items-end gap-2 w-full sm:w-auto shrink-0 pt-1">
             {editing ? (
               <>
                 <button
