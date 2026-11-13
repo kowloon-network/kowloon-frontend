@@ -129,9 +129,16 @@ export default function AdminUsersPage() {
   }
 
   const handleBatchHardDelete = async () => {
-    if (!confirm(`Permanently delete ${count} user(s)? This cannot be undone.`)) return
+    if (!confirm(`Permanently delete ${count} user(s) and everything they posted? This cannot be undone.`)) return
     setPending(true)
-    await Promise.allSettled([...selected].map((id) => client.admin.deleteUser({ userId: id, fullDelete: true })))
+    const ids = [...selected]
+    const results = await Promise.allSettled(ids.map((id) => client.admin.deleteUser({ userId: id, fullDelete: true })))
+    // Some can be refused (admins, an admin who's the only one owning a
+    // group) -- say which and why rather than failing silently.
+    const refused = results
+      .map((r, i) => (r.status === 'rejected' ? `${ids[i]}: ${r.reason?.message || 'failed'}` : null))
+      .filter(Boolean)
+    if (refused.length) alert(`Not deleted:\n\n${refused.join('\n')}`)
     clear()
     await load()
     setPending(false)
