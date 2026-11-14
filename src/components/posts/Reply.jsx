@@ -9,7 +9,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
-import { Pen, Trash, Send, X, MessageSquare } from 'lucide-react'
+import { Pen, Trash, Send, X, MessageSquare, Flag } from 'lucide-react'
+import ReportDialog from '../ui/ReportDialog'
 import UserAvatar from '../ui/UserAvatar'
 import Timestamp from '../ui/Timestamp'
 import ReactButton from './ReactButton'
@@ -37,6 +38,7 @@ export default function Reply({ reply, onUpdated, onDeleted, showReply = false, 
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState(null)
+  const [reportOpen, setReportOpen] = useState(false)
 
   const handleSave = async (e) => {
     e?.preventDefault()
@@ -179,12 +181,29 @@ export default function Reply({ reply, onUpdated, onDeleted, showReply = false, 
                 </button>
               </>
             )}
+            {user && !isAuthor && (
+              <button
+                type="button"
+                onClick={() => setReportOpen(true)}
+                title={t('post.reportReply', { defaultValue: 'Report this reply' })}
+                aria-label={t('post.reportReply', { defaultValue: 'Report this reply' })}
+                className="text-sm text-base-content/40 hover:text-base-content transition-colors"
+              >
+                <Flag size={13} />
+              </button>
+            )}
             {error && !editing && (
               <span className="font-ui text-xs uppercase tracking-widest text-error">{error}</span>
             )}
           </div>
         )}
       </div>
+      <ReportDialog
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        targetId={reply.id}
+        noun="reply"
+      />
     </div>
   )
 }

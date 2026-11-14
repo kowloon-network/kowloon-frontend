@@ -139,7 +139,7 @@ export default function MediaLightbox({ items, index, onClose, onNavigate, edgeP
   const renderImage = (it) => (
     <img
       src={it.url}
-      alt={it.name ?? ''}
+      alt={it.alt || it.summary || it.name || ''}
       className="max-w-[95vw] max-h-[95vh] object-contain pointer-events-none select-none"
       draggable={false}
     />
@@ -240,7 +240,7 @@ export default function MediaLightbox({ items, index, onClose, onNavigate, edgeP
         >
           <img
             src={item.url}
-            alt={item.name ?? ''}
+            alt={item.alt || item.summary || item.name || ''}
             draggable={false}
             className="block select-none cursor-zoom-out"
             style={{ width: '200%', maxWidth: 'none', height: 'auto' }}
@@ -274,7 +274,7 @@ export default function MediaLightbox({ items, index, onClose, onNavigate, edgeP
           {isImage && (
             <img
               src={item.url}
-              alt={item.name ?? ''}
+              alt={item.alt || item.summary || item.name || ''}
               onClick={() => setZoomed(true)}
               draggable={false}
               className="max-w-[95vw] max-h-[95vh] object-contain cursor-zoom-in select-none"

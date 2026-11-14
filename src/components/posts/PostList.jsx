@@ -21,7 +21,7 @@ function MediaThumb({ post }) {
   let thumb = null
 
   if (mt.startsWith('image/')) {
-    thumb = <img loading="lazy" src={sizedUrl(att.url, 400)} alt={post.name ?? ''} className="absolute inset-0 w-full h-full object-cover" />
+    thumb = <img loading="lazy" src={sizedUrl(att.url, 400)} alt={att.alt || post.name || ''} className="absolute inset-0 w-full h-full object-cover" />
   } else if (mt.startsWith('video/')) {
     thumb = (
       <>

@@ -1,5 +1,6 @@
 // UserPage — profile: avatar, bio, links, stats, public circles, and post feed.
 
+import ReportDialog from '../components/ui/ReportDialog'
 import { useParams, Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { useEffect, useRef, useState, useCallback } from 'react'
@@ -71,6 +72,7 @@ function CircleChip({ circle }) {
 function ProfileActionsMenu({ user, client }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -130,8 +132,21 @@ function ProfileActionsMenu({ user, client }) {
           >
             {t('user.block', { defaultValue: 'Block' })}
           </button>
+          <button
+            type="button"
+            onClick={() => { setOpen(false); setReportOpen(true) }}
+            className="text-left px-4 py-2.5 font-ui text-xs uppercase tracking-widest text-base-content hover:bg-base-200 transition-colors"
+          >
+            {t('user.report', { defaultValue: 'Report' })}
+          </button>
         </div>
       )}
+      <ReportDialog
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        targetId={user.id}
+        noun="person"
+      />
     </div>
   )
 }

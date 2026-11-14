@@ -22,6 +22,7 @@ import PageDetailPage from '../pages/PageDetailPage'
 import SearchPage from '../pages/SearchPage'
 import DiscoverPage from '../pages/DiscoverPage'
 import ServersPage from '../pages/ServersPage'
+import NotFoundPage from '../pages/NotFoundPage'
 
 // Protected pages (auth required — Layout redirects to /login)
 import NewPostPage from '../pages/NewPostPage'
@@ -77,6 +78,9 @@ const router = createBrowserRouter([
       { path: '/discover', element: <DiscoverPage /> },
       { path: '/servers', element: <ServersPage /> },
       { path: '/server/:domain', element: <ServerPage /> },
+      // Anything unmatched. React Router ranks routes by specificity, so
+      // this never shadows a real route, admin ones included.
+      { path: '*', element: <NotFoundPage /> },
     ],
   },
 

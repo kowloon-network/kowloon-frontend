@@ -20,6 +20,7 @@ import BookmarkComposer from '../bookmarks/BookmarkComposer'
 import AddToDiscoveryModal from '../discover/AddToDiscoveryModal'
 import { useClient } from '../../hooks/useClient'
 import { toast } from '../../app/toast'
+import ReportDialog from '../ui/ReportDialog'
 
 // ── Share helpers ────────────────────────────────────────────────────────────
 
@@ -220,6 +221,7 @@ function PostMoreMenu({ post, t, user, onDeleted }) {
   const [deleting, setDeleting] = useState(false)
   const [anchorRect, setAnchorRect] = useState(null)
   const [discoveryOpen, setDiscoveryOpen] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
 
   const triggerRef = useRef(null)
   const popoverRef = useRef(null)
@@ -282,16 +284,9 @@ function PostMoreMenu({ post, t, user, onDeleted }) {
     }
   }
 
-  const handleFlag = async () => {
+  const handleFlag = () => {
     setOpen(false)
-    const reason = window.prompt(t('post.flagPrompt', { defaultValue: 'Why are you reporting this post?' }))
-    if (!reason || !reason.trim()) return
-    try {
-      await client.activities.flag({ targetId: post.id, reason: reason.trim() })
-      toast.success(t('post.flagged', { defaultValue: 'Reported — a moderator will review this post.' }))
-    } catch (err) {
-      toast.error(t('post.flagFailed', { defaultValue: "Couldn't report" }), { detail: err?.message })
-    }
+    setReportOpen(true)
   }
 
   const handleBlock = async () => {
@@ -424,6 +419,13 @@ function PostMoreMenu({ post, t, user, onDeleted }) {
         </div>,
         document.body,
       )}
+
+      <ReportDialog
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        targetId={post.id}
+        noun="post"
+      />
 
       {isAdmin && (
         <AddToDiscoveryModal

@@ -129,7 +129,7 @@ function renderMediaItem(a, { large = false, onOpen = null } = {}) {
     return (
       <img
         src={a.url}
-        alt={a.name ?? ''}
+        alt={a.alt || a.summary || a.name || ''}
         onClick={onOpen ?? undefined}
         className={`w-full object-cover bg-black ${large ? 'max-h-[32rem]' : 'max-h-96'}${onOpen ? ' cursor-zoom-in' : ''}`}
       />
@@ -182,7 +182,7 @@ function MediaThumb({ attachment, active, onClick }) {
         active ? 'ring-2 ring-primary opacity-100' : 'opacity-60 hover:opacity-100'
       }`}
     >
-      {isImage && <img loading="lazy" src={sizedUrl(attachment.url, 200)} alt={attachment.name ?? ''} className="w-full h-full object-cover" />}
+      {isImage && <img loading="lazy" src={sizedUrl(attachment.url, 200)} alt={attachment.alt || attachment.summary || attachment.name || ''} className="w-full h-full object-cover" />}
       {isVideo && (
         <>
           <video src={attachment.url} muted preload="metadata" className="w-full h-full object-cover" />
@@ -307,7 +307,7 @@ function AttachmentGrid({ attachments = [], postUrl }) {
         const cell = (
           <div className={`relative overflow-hidden bg-base-300 ${isOddFinal ? 'col-span-2 aspect-[2/1]' : 'aspect-square'}`}>
             {isImage && (
-              <img loading="lazy" src={sizedUrl(a.url, 400)} alt={a.name ?? ''} className="w-full h-full object-cover" />
+              <img loading="lazy" src={sizedUrl(a.url, 400)} alt={a.alt || a.summary || a.name || ''} className="w-full h-full object-cover" />
             )}
             {isVideo && (
               <>

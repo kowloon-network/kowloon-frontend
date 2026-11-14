@@ -10,7 +10,8 @@ import { useClient } from '../hooks/useClient'
 import CircleSelector from '../components/circles/CircleSelector'
 import { useJoinedGroups } from '../hooks/useJoinedGroups'
 import { setActiveTheme } from '../features/theme/themeSlice'
-import { patchUser } from '../features/auth/authSlice'
+import { patchUser, logoutAsync } from '../features/auth/authSlice'
+import { useNavigate } from 'react-router-dom'
 import { useTypography } from '../lib/TypographyProvider'
 import {
   FONTS,
@@ -162,6 +163,168 @@ function ChangePasswordSection({ client, t }) {
           }
         </button>
       </div>
+    </Section>
+  )
+}
+
+// Change your email. Like the password, this posts straight to
+// /auth/change-email: the server wants your password before it will move
+// the address your account is recovered through.
+function ChangeEmailSection({ client, t, user, dispatch }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const [done, setDone] = useState(null)
+
+  const looksValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+  const canSubmit = looksValid && password.length > 0 && !busy
+
+  const handleSubmit = async () => {
+    setBusy(true)
+    setError(null)
+    setDone(null)
+    try {
+      const res = await client.auth.changeEmail({ password, email: email.trim() })
+      dispatch(patchUser({ email: res.email, emailVerified: false }))
+      setEmail('')
+      setPassword('')
+      setDone(res)
+    } catch (err) {
+      setError(err?.message || 'Could not change your email')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Section title={t('profile.email', { defaultValue: 'Email' })}>
+      <Field
+        label={t('profile.currentEmail', { defaultValue: 'Current email' })}
+        hint={user.email && user.emailVerified === false
+          ? t('profile.emailUnverified', { defaultValue: 'Not verified yet. Check your inbox for the link.' })
+          : t('profile.emailHint', { defaultValue: 'Only you and the server admins can see this. Password resets go here.' })}
+      >
+        <TextInput value={user.email || ''} readOnly />
+      </Field>
+      <Field label={t('profile.newEmail', { defaultValue: 'New email' })}>
+        <TextInput type="email" value={email} onChange={setEmail} />
+      </Field>
+      <Field label={t('profile.currentPassword', { defaultValue: 'Current password' })}>
+        <TextInput type="password" value={password} onChange={setPassword} />
+      </Field>
+      <div className="flex items-center justify-end gap-4">
+        {error && (
+          <span role="alert" className="font-ui text-xs uppercase tracking-widest text-error">
+            {error}
+          </span>
+        )}
+        {done && (
+          <span className="flex items-center gap-1.5 font-ui text-xs uppercase tracking-widest text-success">
+            <Check size={13} />
+            {done.verificationSent
+              ? t('profile.emailChanged', { defaultValue: 'Changed. We sent a link to confirm it.' })
+              : t('profile.emailChangedNoMail', { defaultValue: "Changed, but the confirmation email couldn't be sent." })}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!canSubmit}
+          className="px-6 py-2.5 bg-primary text-primary-content font-ui text-xs uppercase tracking-widest hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+        >
+          {busy
+            ? t('profile.changingEmail', { defaultValue: 'Changing…' })
+            : t('profile.changeEmail', { defaultValue: 'Change email' })}
+        </button>
+      </div>
+    </Section>
+  )
+}
+
+// Delete your account for good. Same server route the app uses
+// (/auth/delete-account): it needs your password, and removes the account
+// and everything you've posted here. Copies already on other servers stay
+// there (the privacy policy says so).
+function DeleteAccountSection({ client, t, dispatch }) {
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+  const [password, setPassword] = useState('')
+  const [confirmText, setConfirmText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+
+  const word = t('profile.deleteWord', { defaultValue: 'DELETE' })
+  const canSubmit = password.length > 0 && confirmText.trim().toUpperCase() === word && !busy
+
+  const handleDelete = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      await client.auth.deleteAccount({ password })
+      await dispatch(logoutAsync())
+      navigate('/', { replace: true })
+    } catch (err) {
+      setError(err?.message || 'Could not delete your account')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Section title={t('profile.deleteAccount', { defaultValue: 'Delete account' })}>
+      <p className="font-reading text-sm text-base-content/70 max-w-prose">
+        {t('profile.deleteAccountBody', {
+          defaultValue:
+            'This permanently deletes your account and everything you have posted on this server: posts, replies, reactions, circles, bookmarks and uploads. It cannot be undone. Copies that other servers already received stay on those servers.',
+        })}
+      </p>
+      {!open ? (
+        <div>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="px-6 py-2.5 border border-error text-error font-ui text-xs uppercase tracking-widest hover:bg-error hover:text-error-content transition-colors"
+          >
+            {t('profile.deleteAccountStart', { defaultValue: 'Delete my account…' })}
+          </button>
+        </div>
+      ) : (
+        <>
+          <Field label={t('profile.currentPassword', { defaultValue: 'Current password' })}>
+            <TextInput type="password" value={password} onChange={setPassword} />
+          </Field>
+          <Field
+            label={t('profile.deleteConfirmLabel', { defaultValue: 'Type {{word}} to confirm', word })}
+          >
+            <TextInput value={confirmText} onChange={setConfirmText} />
+          </Field>
+          <div className="flex flex-wrap items-center justify-end gap-4">
+            {error && (
+              <span role="alert" className="font-ui text-xs uppercase tracking-widest text-error">
+                {error}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => { setOpen(false); setPassword(''); setConfirmText(''); setError(null) }}
+              disabled={busy}
+              className="px-4 py-2.5 font-ui text-xs uppercase tracking-widest text-base-content/60 hover:text-base-content"
+            >
+              {t('common.cancel', { defaultValue: 'Cancel' })}
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={!canSubmit}
+              className="px-6 py-2.5 bg-error text-error-content font-ui text-xs uppercase tracking-widest hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+            >
+              {busy
+                ? t('profile.deleting', { defaultValue: 'Deleting…' })
+                : t('profile.deleteForever', { defaultValue: 'Delete forever' })}
+            </button>
+          </div>
+        </>
+      )}
     </Section>
   )
 }
@@ -888,6 +1051,8 @@ export default function ProfilePage() {
 
       <ChangePasswordSection client={client} t={t} />
 
+      {!isVisiting && authUser && <ChangeEmailSection client={client} t={t} user={user} dispatch={dispatch} />}
+
       <ConnectedServersSection client={client} t={t} />
 
       {/* Save */}
@@ -915,6 +1080,12 @@ export default function ProfilePage() {
           }
         </button>
       </div>
+
+      {!isVisiting && authUser && (
+        <div className="pt-8">
+          <DeleteAccountSection client={client} t={t} dispatch={dispatch} />
+        </div>
+      )}
 
     </div>
   )
