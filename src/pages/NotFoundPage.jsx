@@ -13,10 +13,10 @@ export default function NotFoundPage() {
       <h1 className="font-display text-3xl tracking-wide">
         {t('notFound.title', { defaultValue: "There's nothing at this address" })}
       </h1>
-      <p className="font-reading text-sm text-base-content/70 max-w-prose break-all">
+      <p className="font-reading text-sm text-base-content/70 max-w-prose">
+        <span className="font-ui break-all">{pathname}</span>{' '}
         {t('notFound.body', {
-          defaultValue: '{{path}} may have been mistyped, or what was here has been deleted.',
-          path: pathname,
+          defaultValue: 'may have been mistyped, or what was here has been deleted.',
         })}
       </p>
       <Link

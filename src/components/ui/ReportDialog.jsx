@@ -70,13 +70,13 @@ export default function ReportDialog({ open, onClose, targetId, noun = 'post' })
                 role="radio"
                 aria-checked={active}
                 onClick={() => setReason(code)}
-                className={`text-left px-3 py-2.5 border-b border-base-300 last:border-b-0 transition-colors ${
-                  active ? 'bg-primary text-primary-content' : 'hover:bg-base-200'
+                className={`text-left px-3 py-2.5 border-b border-base-300 last:border-b-0 border-l-4 transition-colors ${
+                  active ? 'border-l-primary bg-base-200' : 'border-l-transparent hover:bg-base-200'
                 }`}
               >
-                <span className="block font-ui text-sm">{meta?.label || code}</span>
+                <span className={`block font-ui text-sm ${active ? 'font-semibold' : ''}`}>{meta?.label || code}</span>
                 {meta?.description && (
-                  <span className={`block font-ui text-xs mt-0.5 ${active ? 'text-primary-content/80' : 'text-base-content/55'}`}>
+                  <span className="block font-ui text-xs mt-0.5 text-base-content/60">
                     {meta.description}
                   </span>
                 )}
