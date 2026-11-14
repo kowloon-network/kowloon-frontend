@@ -246,6 +246,172 @@ function ChangeEmailSection({ client, t, user, dispatch }) {
 // (/auth/delete-account): it needs your password, and removes the account
 // and everything you've posted here. Copies already on other servers stay
 // there (the privacy policy says so).
+// Ends every other session (phones, other browsers); this one carries on
+// with a fresh token the SDK stores.
+function SignOutEverywhereSection({ client, t }) {
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState(false)
+  const [error, setError] = useState(null)
+
+  const handle = async () => {
+    setBusy(true)
+    setError(null)
+    setDone(false)
+    try {
+      await client.auth.signOutEverywhere()
+      setDone(true)
+    } catch (err) {
+      setError(err?.message || 'Could not sign out other devices')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Section title={t('profile.sessions', { defaultValue: 'Signed-in devices' })}>
+      <p className="font-reading text-sm text-base-content/70 max-w-prose">
+        {t('profile.sessionsBody', {
+          defaultValue:
+            'Signs you out on every other phone, tablet and browser. You stay signed in here. If you think someone knows your password, change it instead: that signs everything else out too.',
+        })}
+      </p>
+      <div className="flex flex-wrap items-center gap-4">
+        <button
+          type="button"
+          onClick={handle}
+          disabled={busy}
+          className="px-6 py-2.5 border border-base-content/30 font-ui text-xs uppercase tracking-widest hover:bg-base-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          {busy
+            ? t('profile.signingOut', { defaultValue: 'Signing out…' })
+            : t('profile.signOutEverywhere', { defaultValue: 'Sign out everywhere else' })}
+        </button>
+        {done && (
+          <span className="flex items-center gap-1.5 font-ui text-xs uppercase tracking-widest text-success">
+            <Check size={13} />
+            {t('profile.signedOutElsewhere', { defaultValue: 'Other devices signed out' })}
+          </span>
+        )}
+        {error && (
+          <span role="alert" className="font-ui text-xs uppercase tracking-widest text-error">
+            {error}
+          </span>
+        )}
+      </div>
+    </Section>
+  )
+}
+
+const formatSize = (bytes) => {
+  if (!bytes && bytes !== 0) return ''
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`
+}
+
+// "Download my data": asks the server to build a zip in the background,
+// shows progress while it builds, then offers a download link (signed, good
+// for an hour; a fresh one comes with every status check).
+function DataExportSection({ client, t }) {
+  const [exp, setExp] = useState(undefined) // undefined = loading, null = none
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const building = exp && (exp.status === 'pending' || exp.status === 'running')
+
+  useEffect(() => {
+    let alive = true
+    client.auth.getDataExport().then((e) => { if (alive) setExp(e) }).catch(() => { if (alive) setExp(null) })
+    return () => { alive = false }
+  }, [client])
+
+  // While it builds, check every few seconds.
+  useEffect(() => {
+    if (!building) return
+    const timer = setInterval(() => {
+      client.auth.getDataExport().then(setExp).catch(() => {})
+    }, 4000)
+    return () => clearInterval(timer)
+  }, [building, client])
+
+  const handleRequest = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      setExp(await client.auth.requestDataExport())
+    } catch (err) {
+      setError(err?.message || 'Could not start the download')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const dateFmt = (d) => (d ? new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'long' }) : '')
+
+  return (
+    <Section title={t('profile.dataExport', { defaultValue: 'Download your data' })}>
+      <p className="font-reading text-sm text-base-content/70 max-w-prose">
+        {t('profile.dataExportBody', {
+          defaultValue:
+            'Get a copy of everything you have made here, as a zip file: your profile, posts, replies, circles, bookmarks, reactions and every photo, video and file you uploaded. Your posts come as a page you can read in any browser. It can take a few minutes; we will email you when it is ready.',
+        })}
+      </p>
+
+      {exp?.status === 'done' && (
+        <div className="flex flex-col gap-1 border-l-4 border-l-primary bg-base-200 px-4 py-3">
+          <a
+            href={exp.downloadUrl}
+            className="self-start px-6 py-2.5 bg-primary text-primary-content font-ui text-xs uppercase tracking-widest hover:opacity-90"
+          >
+            {t('profile.dataExportDownload', { defaultValue: 'Download' })}
+            {exp.sizeBytes ? ` (${formatSize(exp.sizeBytes)})` : ''}
+          </a>
+          <span className="font-ui text-xs text-base-content/60 mt-1">
+            {t('profile.dataExportReady', {
+              defaultValue: 'Made {{made}}. Available until {{until}}.',
+              made: dateFmt(exp.readyAt),
+              until: dateFmt(exp.expiresAt),
+            })}
+          </span>
+        </div>
+      )}
+
+      {building && (
+        <p role="status" className="font-ui text-xs uppercase tracking-widest text-base-content/60">
+          {t('profile.dataExportBuilding', { defaultValue: 'Preparing your copy' })}
+          {exp.stage ? `: ${exp.stage}` : '…'}
+        </p>
+      )}
+
+      {exp?.status === 'failed' && (
+        <p role="alert" className="font-ui text-xs text-error">
+          {t('profile.dataExportFailed', { defaultValue: "The last copy couldn't be made." })}
+          {exp.error ? ` (${exp.error})` : ''}
+        </p>
+      )}
+
+      {!building && exp !== undefined && (
+        <div className="flex flex-wrap items-center gap-4">
+          <button
+            type="button"
+            onClick={handleRequest}
+            disabled={busy}
+            className="px-6 py-2.5 border border-base-content/30 font-ui text-xs uppercase tracking-widest hover:bg-base-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            {exp?.status === 'done'
+              ? t('profile.dataExportAgain', { defaultValue: 'Make a new copy' })
+              : t('profile.dataExportStart', { defaultValue: 'Prepare my download' })}
+          </button>
+          {error && (
+            <span role="alert" className="font-ui text-xs uppercase tracking-widest text-error">
+              {error}
+            </span>
+          )}
+        </div>
+      )}
+    </Section>
+  )
+}
+
 function DeleteAccountSection({ client, t, dispatch }) {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
@@ -1082,7 +1248,9 @@ export default function ProfilePage() {
       </div>
 
       {!isVisiting && authUser && (
-        <div className="pt-8">
+        <div className="pt-8 flex flex-col gap-8">
+          <SignOutEverywhereSection client={client} t={t} />
+          <DataExportSection client={client} t={t} />
           <DeleteAccountSection client={client} t={t} dispatch={dispatch} />
         </div>
       )}
