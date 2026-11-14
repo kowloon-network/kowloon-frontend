@@ -109,7 +109,7 @@ function ChangePasswordSection({ client, t }) {
       <p className="font-reading text-xs text-base-content/40 italic -mt-2">
         {t('profile.passwordHint', {
           defaultValue:
-            'Changing your password here keeps you signed in on this device. Other devices stay signed in until their session expires.',
+            'You\'ll stay signed in on this device. Changing your password signs you out everywhere else.',
         })}
       </p>
 
