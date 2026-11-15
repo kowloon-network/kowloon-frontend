@@ -2,9 +2,12 @@
 // Calendar tear-off block (month + day) beside title, location prominent below.
 // Used by PostCard whenever post.type === 'Event'.
 
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import PostMeta from './PostMeta'
+import { ContentWarningGate, HiddenLine, SensitiveMedia } from './ContentWarning'
+import { useContentWarning, useHiddenCard } from '../../hooks/useContentWarning'
 import PostToolbar from './PostToolbar'
 import VisibilityIcon from '../ui/VisibilityIcon'
 import { POST_TYPES } from '../../lib/postTypes'
@@ -52,9 +55,20 @@ export default function EventCard({ post, showFull = false }) {
   const isTruncated  = !showFull && !!post?.summary
   const body  = isTruncated ? post.summary : (post?.body ?? '')
   const image = post?.featuredImage ?? null
+  const cw = useContentWarning(post)
+  const hidden = useHiddenCard(post)
+  const [mediaShown, setMediaShown] = useState(false)
   const postUrl = post?.id ? `/posts/${encodeURIComponent(post.id)}` : null
 
   const subheader = [startTime, locationName].filter(Boolean).join(' | ')
+
+  if (hidden.hidden) {
+    return (
+      <article id={post?.id} data-post-id={post?.id} className="py-3 mb-4">
+        <HiddenLine label={hidden.label} onShow={hidden.unhide} />
+      </article>
+    )
+  }
 
   return (
     <article
@@ -62,10 +76,13 @@ export default function EventCard({ post, showFull = false }) {
       data-post-id={post?.id}
       className="flex flex-col gap-3 py-5 mb-8"
     >
+      <ContentWarningGate post={post} hideHandled header={<PostMeta post={post} />}>
 
       {/* Featured image */}
       {image && (
-        <img loading="lazy" src={image} alt="" className="w-full max-h-64 object-cover" />
+        <SensitiveMedia blur={cw.blurMedia && !mediaShown} onReveal={() => setMediaShown(true)}>
+          <img loading="lazy" src={image} alt="" className="w-full max-h-64 object-cover" />
+        </SensitiveMedia>
       )}
 
       {/* Top row: calendar block + title + subheader */}
@@ -108,6 +125,7 @@ export default function EventCard({ post, showFull = false }) {
           )}
         </>
       )}
+      </ContentWarningGate>
 
       {/* Footer -- #65: PostTypeIcon removed, redundant with PostMeta's
           colored type label above; same fix as PostCard.jsx. */}

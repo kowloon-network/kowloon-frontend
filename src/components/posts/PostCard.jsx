@@ -8,9 +8,26 @@ import PostReacts from './PostReacts'
 import PostToolbar from './PostToolbar'
 import VisibilityIcon from '../ui/VisibilityIcon'
 import EventCard from './EventCard'
+import { ContentWarningGate, HiddenLine } from './ContentWarning'
+import { useHiddenCard } from '../../hooks/useContentWarning'
 
 export default function PostCard({ post, onDeleted, showFull = false }) {
   if (post?.type === 'Event') return <EventCard post={post} showFull={showFull} />
+  return <StandardPostCard post={post} onDeleted={onDeleted} showFull={showFull} />
+}
+
+function StandardPostCard({ post, onDeleted, showFull }) {
+  // Content warnings (ContentWarning.jsx): a category the reader hides
+  // collapses the whole card to one line; otherwise the header stays and the
+  // content sits behind the warning.
+  const hidden = useHiddenCard(post)
+  if (hidden.hidden) {
+    return (
+      <article id={post?.id} data-post-id={post?.id} className="py-3 mb-4">
+        <HiddenLine label={hidden.label} onShow={hidden.unhide} />
+      </article>
+    )
+  }
 
   return (
     <article
@@ -19,7 +36,9 @@ export default function PostCard({ post, onDeleted, showFull = false }) {
       className={`post-type-${post?.type?.toLowerCase()} flex flex-col gap-3 py-5 mb-8`}
     >
       <PostMeta post={post} />
-      <PostBody post={post} showFull={showFull} />
+      <ContentWarningGate post={post} hideHandled>
+        <PostBody post={post} showFull={showFull} />
+      </ContentWarningGate>
       <PostReacts post={post} />
       {/* #65: PostTypeIcon used to render here too, duplicating the colored
           type label PostMeta already shows above (e.g. "MEDIA" in the same

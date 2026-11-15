@@ -13,6 +13,8 @@ import EmbedPlayer from './EmbedPlayer'
 import UserAvatar from '../ui/UserAvatar'
 import sizedUrl from '../../lib/sizedUrl'
 import SafeHtml from '../ui/SafeHtml'
+import { SensitiveMedia } from './ContentWarning'
+import { useContentWarning } from '../../hooks/useContentWarning'
 
 marked.use({ breaks: true, gfm: true })
 
@@ -345,6 +347,12 @@ function AttachmentGrid({ attachments = [], postUrl }) {
 export default function PostBody({ post, showFull = false }) {
   const navigate = useNavigate()
   const [heroLightbox, setHeroLightbox] = useState(false)
+  // Photos and video marked sensitive stay blurred until tapped (one tap
+  // shows every picture in the post).
+  const { blurMedia } = useContentWarning(post)
+  const [mediaShown, setMediaShown] = useState(false)
+  const blur = blurMedia && !mediaShown
+  const reveal = () => setMediaShown(true)
 
   // Intercept clicks on links inside the server-rendered HTML body: @mentions
   // and Kowloon-item links navigate in-app (SPA) instead of triggering a full
@@ -408,14 +416,20 @@ export default function PostBody({ post, showFull = false }) {
       {/* Rich-media embed (video, audio, …) takes the featured-media slot when a
           provider recognizes the link; otherwise fall back to the hero image. */}
       {embed?.mode === 'inline' ? (
-        <EmbedPlayer embed={embed} poster={post?.image} title={title} />
+        <SensitiveMedia blur={blur} onReveal={reveal} className="mb-6">
+          <EmbedPlayer embed={embed} poster={post?.image} title={title} />
+        </SensitiveMedia>
       ) : (
 
       /* Hero image — after title, before body (non-Media types). For Link
           posts the image is a click-through to the external URL (like the title);
           for Article/Event featured images it opens the lightbox. */
       heroSrc && (
-        isLink && post?.href ? (
+        blur ? (
+          <SensitiveMedia blur onReveal={reveal} className="mb-6">
+            <img src={heroDisplaySrc} alt="" className="w-full object-cover max-h-64" />
+          </SensitiveMedia>
+        ) : isLink && post?.href ? (
           <a
             href={post.href}
             target="_blank"
@@ -455,9 +469,11 @@ export default function PostBody({ post, showFull = false }) {
 
       {/* Media: capped grid in the feed card, full gallery on the detail page */}
       {isMedia && (
-        showFull
-          ? <MediaGallery attachments={post?.attachments ?? []} />
-          : <AttachmentGrid attachments={post?.attachments ?? []} postUrl={postUrl} />
+        <SensitiveMedia blur={blur} onReveal={reveal}>
+          {showFull
+            ? <MediaGallery attachments={post?.attachments ?? []} />
+            : <AttachmentGrid attachments={post?.attachments ?? []} postUrl={postUrl} />}
+        </SensitiveMedia>
       )}
 
       {/* SafeHtml: body may come from an arbitrary remote server (ServerPage)
@@ -480,9 +496,11 @@ export default function PostBody({ post, showFull = false }) {
       )}
 
       {!isMedia && (post?.attachments?.length ?? 0) > 0 && (
-        showFull
-          ? <Attachments attachments={post.attachments} />
-          : <AttachmentGrid attachments={post.attachments} postUrl={postUrl} />
+        <SensitiveMedia blur={blur} onReveal={reveal}>
+          {showFull
+            ? <Attachments attachments={post.attachments} />
+            : <AttachmentGrid attachments={post.attachments} postUrl={postUrl} />}
+        </SensitiveMedia>
       )}
     </div>
   )

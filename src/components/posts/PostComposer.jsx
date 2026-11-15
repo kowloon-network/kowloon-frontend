@@ -22,6 +22,7 @@ import { loadRichTextEditor } from './richTextEditorLoader'
 import CircleSelector from '../circles/CircleSelector'
 import { useJoinedGroups } from '../../hooks/useJoinedGroups'
 import LocationField from './LocationField'
+import { ContentWarningPicker } from './ContentWarning'
 import AudioPlayer from '../ui/AudioPlayer'
 import { ChevronDown, ChevronRight, Plus, X, Check, Image as ImageIcon } from 'lucide-react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -391,6 +392,8 @@ export default function PostComposer({
   const endDate   = joinDateTime(endDatePart, endTimePart)
   const [tags, setTags]               = useState(initialValues.tags     ?? [])
   const [location, setLocation]       = useState(initialValues.location ?? '')
+  const [contentWarning, setContentWarning] = useState(initialValues.contentWarning ?? null) // { categories, note }
+  const [sensitive, setSensitive]     = useState(!!initialValues.sensitive) // blur photos and video
   const [attachments, setAttachments] = useState([])   // [{ file, title, alt, previewUrl }]
   const [featuredImage, setFeaturedImage] = useState(initialValues.featuredImage ?? null) // URL or file ID from link/article preview
   const [artFeaturedFile, setArtFeaturedFile]       = useState(null)    // File for Article featured image
@@ -758,6 +761,8 @@ export default function PostComposer({
     setEndTimePart('')
     setTags([])
     setLocation('')
+    setContentWarning(null)
+    setSensitive(false)
     setGeo(null)
     setAttachments((prev) => { prev.forEach((a) => URL.revokeObjectURL(a.previewUrl)); return [] })
     setFeaturedImage(null)
@@ -1027,6 +1032,8 @@ export default function PostComposer({
         attachments: uploadedAttachments,
         featuredImage: uploadedFeaturedImage,
         target: target || undefined,
+        contentWarning: contentWarning || undefined,
+        sensitive: sensitive || undefined,
         dedupeKey: dedupeRef.current.key,
       })
       handleCancel()
@@ -1479,6 +1486,17 @@ export default function PostComposer({
               borderTop
             />
           )}
+
+          {/* Content warning -- collapsed to one button until used */}
+          <div className="flex flex-col px-4 py-3 border-t border-base-300">
+            <ContentWarningPicker
+              value={contentWarning}
+              onChange={setContentWarning}
+              sensitive={sensitive}
+              onSensitiveChange={setSensitive}
+              hasMedia={attachments.length > 0 || !!artFeaturedFile || !!featuredImage}
+            />
+          </div>
 
           {/* Advanced — who can reply / react. Seeded from the audience above. */}
           <ReplyReactScope

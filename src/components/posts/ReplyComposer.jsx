@@ -9,18 +9,31 @@ import UserAvatar from '../ui/UserAvatar'
 import { useClient } from '../../hooks/useClient'
 import { useDraft } from '../../hooks/useDraft'
 import { toast } from '../../app/toast'
+import { inheritedContentWarning } from '@kowloon/client'
+import { ContentWarningPicker } from './ContentWarning'
 
 // `inReplyTo` (a first-level reply id) turns this into a threaded reply that
 // answers a reply instead of the post; omit it for a top-level reply. `compact`
 // tightens the layout for inline use beneath a reply. `onCancel`, when given,
 // renders a dismiss control (used by the inline threaded composer).
-export default function ReplyComposer({ postId, inReplyTo, canReply, onSubmitted, onCancel, autoFocus = false, compact = false, placeholder }) {
+// `parent` (the post or reply being answered) pre-fills its content warning,
+// so a thread doesn't undo its own warning; the author can change or clear it.
+export default function ReplyComposer({ postId, inReplyTo, parent, canReply, onSubmitted, onCancel, autoFocus = false, compact = false, placeholder }) {
   const { t } = useTranslation()
   const user = useSelector((state) => state.auth.user)
   const client = useClient()
   const [text, setText] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
+  const [cw, setCw] = useState(() => inheritedContentWarning(parent))
+  // The parent may load after the composer mounts -- pick its warning up then.
+  const cwParentRef = useRef(parent?.id ?? null)
+  useEffect(() => {
+    const pid = parent?.id ?? null
+    if (pid === cwParentRef.current) return
+    cwParentRef.current = pid
+    setCw(inheritedContentWarning(parent))
+  }, [parent])
   // Per-attempt idempotency key. Reused on retries of the same text so the
   // server's dedupeKey lookup short-circuits duplicate Activity records
   // caused by network blips. Regenerated when the user edits the text.
@@ -72,8 +85,9 @@ export default function ReplyComposer({ postId, inReplyTo, canReply, onSubmitted
     setSubmitting(true)
     setError(null)
     try {
-      const res = await client.activities.reply({ postId, inReplyTo, content, dedupeKey: dedupeRef.current.key })
+      const res = await client.activities.reply({ postId, inReplyTo, content, contentWarning: cw, dedupeKey: dedupeRef.current.key })
       setText('')
+      setCw(inheritedContentWarning(parent))
       dedupeRef.current = null
       draft.clear()
       onSubmitted?.({ duplicated: !!res?.duplicated, result: res, content, inReplyTo })
@@ -106,6 +120,7 @@ export default function ReplyComposer({ postId, inReplyTo, canReply, onSubmitted
           className={`w-full bg-base-100 border-2 border-base-300 focus:border-primary outline-none font-reading text-sm text-base-content placeholder:text-base-content/30 resize-none transition-colors ${compact ? 'px-3 py-2' : 'px-4 py-3'}`}
           onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit(e) }}
         />
+        <ContentWarningPicker value={cw} onChange={setCw} />
         <div className="flex items-center justify-between gap-3">
           <span className="font-ui text-xs text-base-content/30 uppercase tracking-widest">
             {t('post.replyHint', { defaultValue: 'Cmd/Ctrl+Enter to submit' })}

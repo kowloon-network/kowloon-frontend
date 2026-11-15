@@ -4,9 +4,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSelector } from 'react-redux'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, ExternalLink, Trash2, EyeOff, UserX, Flame } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Trash2, EyeOff, UserX, Flame, AlertTriangle } from 'lucide-react'
 import { useClient } from '../../hooks/useClient'
 import Spinner from '../../components/ui/Spinner'
+import ContentWarningDialog from '../../components/ui/ContentWarningDialog'
 import sizedUrl from '../../lib/sizedUrl'
 import { StatusChip } from '../../components/admin/reports'
 import { localDomains, isLocalPersonId } from '../../components/admin/blocklistUtils'
@@ -62,6 +63,7 @@ export default function AdminReportPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [done, setDone] = useState(null)
+  const [cwOpen, setCwOpen] = useState(false)
   const viewerId = useSelector((state) => state.auth?.user?.id)
   const locals = useMemo(() => localDomains(viewerId), [viewerId])
 
@@ -204,6 +206,16 @@ export default function AdminReportPage() {
                 'Removed. The reporter and the author have been told.',
               )}
             />
+            {(flag.targetType === 'Post' || flag.targetType === 'Reply') && (
+              <ActionButton
+                icon={AlertTriangle}
+                label="Add content warning"
+                hint="Keep it up, behind a warning readers choose to open. The reporter and the author are told."
+                busy={busy}
+                disabled={t.exists === false}
+                onClick={() => setCwOpen(true)}
+              />
+            )}
             {authorIsLocal && isMod ? (
               <p className="font-ui text-xs text-base-content/50 py-2">
                 Banning a member is an admin's call. If this needs a ban, tell an admin -- or remove the {typeLabel.toLowerCase()} now and leave the ban to them.
@@ -253,6 +265,19 @@ export default function AdminReportPage() {
           </div>
         </section>
       )}
+
+      <ContentWarningDialog
+        open={cwOpen}
+        onClose={() => setCwOpen(false)}
+        intro={`Readers will see the warning first and can choose to show this ${typeLabel.toLowerCase()}. The report is closed, and the reporter and ${authorName} are told.`}
+        saveLabel="Add warning"
+        onSave={async ({ contentWarning, sensitive }) => {
+          setError(null)
+          await client.admin.warnFlaggedItem({ flagId: flag.id, contentWarning, sensitive })
+          setDone('Content warning added. The reporter and the author have been told.')
+          await load()
+        }}
+      />
     </div>
   )
 }

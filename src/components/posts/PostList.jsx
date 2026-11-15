@@ -11,16 +11,29 @@ import ErrorState from '../ui/ErrorState'
 import LoadMoreButton from '../ui/LoadMoreButton'
 import { Play } from 'lucide-react'
 import sizedUrl from '../../lib/sizedUrl'
+import { useContentWarning } from '../../hooks/useContentWarning'
 
 // ── Media grid ────────────────────────────────────────────────────────────────
 
 function MediaThumb({ post }) {
   const att = post.attachments?.[0]
   const mt  = att?.mediaType ?? ''
+  // Behind a warning (or marked sensitive): a plain tile naming the warning,
+  // never the picture. Tapping opens the post, where it can be shown.
+  const cw = useContentWarning(post)
+  const covered = cw.mode !== 'show' || cw.blurMedia
 
   let thumb = null
 
-  if (mt.startsWith('image/')) {
+  if (covered) {
+    thumb = (
+      <div className="absolute inset-0 flex items-center justify-center bg-base-200">
+        <p className="font-ui text-xs uppercase tracking-widest text-base-content/60 px-3 text-center line-clamp-4">
+          {cw.mode === 'hide' ? cw.hiddenLabel : cw.hasWarning ? `Content warning: ${cw.label}` : 'Sensitive media'}
+        </p>
+      </div>
+    )
+  } else if (mt.startsWith('image/')) {
     thumb = <img loading="lazy" src={sizedUrl(att.url, 400)} alt={att.alt || post.name || ''} className="absolute inset-0 w-full h-full object-cover" />
   } else if (mt.startsWith('video/')) {
     thumb = (
@@ -63,7 +76,7 @@ function MediaThumb({ post }) {
       {thumb}
       {/* Always-visible title/author bar */}
       <div className="absolute bottom-0 left-0 right-0 px-2.5 pt-6 pb-2 bg-gradient-to-t from-black/75 to-transparent">
-        {post.name && (
+        {post.name && !(covered && cw.hasWarning) && (
           <p className="font-display text-white text-base leading-tight tracking-wide line-clamp-2">{post.name}</p>
         )}
         {post.actor && (

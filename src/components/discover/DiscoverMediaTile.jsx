@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom'
 import { Music, Play, X } from 'lucide-react'
 import AudioPlayer from '../ui/AudioPlayer'
 import sizedUrl from '../../lib/sizedUrl'
+import { useCompactWarning } from '../../hooks/useContentWarning'
 
 // Resolve a possibly-relative media URL against a remote base (for cross-server
 // tiles). Absolute + data URLs pass through untouched.
@@ -68,11 +69,29 @@ function AuthorOverlay({ author, baseUrl }) {
 
 export default function DiscoverMediaTile({ item, size = 150, baseUrl, showAuthor }) {
   const [videoOpen, setVideoOpen] = useState(false)
+  const cw = useCompactWarning(item)
   const kind = item.mediaKind || 'image'
   const img = resolveUrl(item.mediaImage || item.featuredImage, baseUrl)
   const playUrl = resolveUrl(item.mediaUrl, baseUrl)
   const author = item.actor || {}
   const dims = { width: size, height: size }
+
+  // ── Behind a content warning or sensitive: a plain tile that opens the
+  // post, where the reader can choose to see it. ──
+  if (cw.hideImage) {
+    return (
+      <Link
+        to={`/posts/${encodeURIComponent(item.id)}`}
+        style={dims}
+        className="shrink-0 relative flex items-center justify-center bg-base-200 overflow-hidden p-2"
+      >
+        <span className="font-ui text-[10px] uppercase tracking-widest text-base-content/60 text-center line-clamp-4">
+          {cw.text || 'Sensitive media'}
+        </span>
+        {showAuthor && <AuthorOverlay author={author} baseUrl={baseUrl} />}
+      </Link>
+    )
+  }
 
   // ── Audio — inline styled player fills the tile. ──
   if (kind === 'audio' && playUrl) {

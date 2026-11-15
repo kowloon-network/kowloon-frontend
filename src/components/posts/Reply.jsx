@@ -16,6 +16,8 @@ import Timestamp from '../ui/Timestamp'
 import ReactButton from './ReactButton'
 import { useClient } from '../../hooks/useClient'
 import SafeHtml from '../ui/SafeHtml'
+import { ContentWarningGate, ContentWarningPicker, HiddenLine } from './ContentWarning'
+import { useHiddenCard } from '../../hooks/useContentWarning'
 
 // `showReply` gates the threaded-reply affordance — first-level replies only,
 // since threading is capped at 2 levels. `onReplyClick` toggles the inline
@@ -39,6 +41,9 @@ export default function Reply({ reply, onUpdated, onDeleted, showReply = false, 
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState(null)
   const [reportOpen, setReportOpen] = useState(false)
+  const [cwDraft, setCwDraft] = useState(reply.contentWarning ?? null)
+  const cwLocked = !!reply.contentWarning?.addedBy
+  const hidden = useHiddenCard(reply)
 
   const handleSave = async (e) => {
     e?.preventDefault()
@@ -46,12 +51,17 @@ export default function Reply({ reply, onUpdated, onDeleted, showReply = false, 
     setSaving(true)
     setError(null)
     try {
-      const res = await client.activities.updateReply({ replyId: reply.id, content: draft })
+      const res = await client.activities.updateReply({
+        replyId: reply.id,
+        content: draft,
+        ...(cwLocked ? {} : { contentWarning: cwDraft }),
+      })
       const updated = res?.result ?? res?.activity?.object ?? null
       onUpdated?.({
         ...reply,
         source: { ...(reply.source ?? {}), content: draft },
         body: updated?.body ?? '',
+        contentWarning: cwLocked ? reply.contentWarning : (cwDraft ?? undefined),
       })
       setEditing(false)
     } catch (err) {
@@ -73,6 +83,14 @@ export default function Reply({ reply, onUpdated, onDeleted, showReply = false, 
       setError(err.message || 'Failed to delete reply.')
       setDeleting(false)
     }
+  }
+
+  if (hidden.hidden) {
+    return (
+      <div className="py-2 border-b border-base-300 last:border-b-0">
+        <HiddenLine label={hidden.label} onShow={hidden.unhide} />
+      </div>
+    )
   }
 
   return (
@@ -101,11 +119,12 @@ export default function Reply({ reply, onUpdated, onDeleted, showReply = false, 
               className="w-full px-3 py-2 bg-base-100 border-2 border-base-300 focus:border-primary outline-none font-reading text-sm text-base-content resize-none transition-colors"
               onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSave(e) }}
             />
+            <ContentWarningPicker value={cwDraft} onChange={setCwDraft} locked={cwLocked} />
             <div className="flex items-center justify-end gap-2">
               {error && <span className="font-ui text-xs uppercase tracking-widest text-error mr-auto">{error}</span>}
               <button
                 type="button"
-                onClick={() => { setEditing(false); setDraft(reply.source?.content ?? ''); setError(null) }}
+                onClick={() => { setEditing(false); setDraft(reply.source?.content ?? ''); setCwDraft(reply.contentWarning ?? null); setError(null) }}
                 className="inline-flex items-center gap-1 px-3 py-1.5 font-ui text-xs uppercase tracking-widest text-base-content/60 hover:text-base-content transition-colors"
               >
                 <X size={12} />
@@ -122,20 +141,22 @@ export default function Reply({ reply, onUpdated, onDeleted, showReply = false, 
             </div>
           </form>
         ) : (
-          html ? (
-            <div className="reading-surface">
-              <SafeHtml
-                html={html}
-                className="prose prose-sm max-w-none font-reading text-base-content/80"
-              />
-            </div>
-          ) : fallbackText ? (
-            <div className="reading-surface">
-              <p className="prose prose-sm max-w-none font-reading text-base-content/80 whitespace-pre-wrap">
-                {fallbackText}
-              </p>
-            </div>
-          ) : null
+          <ContentWarningGate post={reply} hideHandled>
+            {html ? (
+              <div className="reading-surface">
+                <SafeHtml
+                  html={html}
+                  className="prose prose-sm max-w-none font-reading text-base-content/80"
+                />
+              </div>
+            ) : fallbackText ? (
+              <div className="reading-surface">
+                <p className="prose prose-sm max-w-none font-reading text-base-content/80 whitespace-pre-wrap">
+                  {fallbackText}
+                </p>
+              </div>
+            ) : null}
+          </ContentWarningGate>
         )}
 
         {!editing && (

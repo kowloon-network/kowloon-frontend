@@ -9,6 +9,7 @@ import ReactButton from '../components/posts/ReactButton'
 import { ShareButton, ReplyButton } from '../components/posts/PostToolbar'
 import UserAvatar from '../components/ui/UserAvatar'
 import sizedUrl from '../lib/sizedUrl'
+import { useCompactWarning } from '../hooks/useContentWarning'
 
 export default function PhotoCard({ post, attachment, photoCount = 1, onOpen }) {
   const { t } = useTranslation()
@@ -25,7 +26,10 @@ export default function PhotoCard({ post, attachment, photoCount = 1, onOpen }) 
   const title = isMultiPhoto
     ? (post?.title || post?.summary || '')
     : (attachment?.name || attachment?.alt || post?.title || post?.name || '')
-  const bgUrl = sizedUrl(attachment?.url, 600)
+  // Content warning or sensitive: no picture in the grid, just the warning.
+  // Opening the card is the reader's choice to see it.
+  const cw = useCompactWarning(post)
+  const bgUrl = cw.hideImage ? null : sizedUrl(attachment?.url, 600)
   const mainDomain = window.location.hostname.replace(/^pics\./, '')
 
   return (
@@ -38,6 +42,14 @@ export default function PhotoCard({ post, attachment, photoCount = 1, onOpen }) 
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen?.() } }}
       aria-label={title || t('pics.openPhoto', { defaultValue: 'Open photo' })}
     >
+      {cw.hideImage && (
+        <div className="absolute inset-0 flex items-center justify-center p-4 bg-base-200">
+          <span className="font-ui text-xs uppercase tracking-widest text-base-content/60 text-center line-clamp-4">
+            {cw.text || t('pics.sensitive', { defaultValue: 'Sensitive -- tap to show' })}
+          </span>
+        </div>
+      )}
+
       {/* Bottom tinted overlay — avatar + name/id/title (left) + react/share (right), white on a dark scrim */}
       <div
         className="absolute inset-x-0 bottom-0 px-2.5 py-2 flex items-center justify-between gap-2"
@@ -58,7 +70,7 @@ export default function PhotoCard({ post, attachment, photoCount = 1, onOpen }) 
           <div className="min-w-0 flex flex-col leading-tight">
             <span className="font-ui text-[11px] font-medium text-white truncate">{authorName}</span>
             <span className="font-ui text-[10px] text-white/75 truncate">{authorHandle}</span>
-            {title && <span className="font-ui text-[10px] text-white/75 truncate">{title}</span>}
+            {title && !cw.text && <span className="font-ui text-[10px] text-white/75 truncate">{title}</span>}
           </div>
         </div>
         {/* Hidden on phone — too cramped alongside the avatar/name/id/title

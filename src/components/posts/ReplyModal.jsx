@@ -20,6 +20,7 @@ import ErrorState from '../ui/ErrorState'
 import Reply from './Reply'
 import ReplyComposer from './ReplyComposer'
 import { buildReplyTree } from '../../lib/replyTree'
+import { useContentWarning } from '../../hooks/useContentWarning'
 
 export default function ReplyModal({ post, open, onClose, onReplied }) {
   const { t } = useTranslation()
@@ -125,10 +126,13 @@ export default function ReplyModal({ post, open, onClose, onReplied }) {
 
   const rootId = post?.id
   const tree = useMemo(() => buildReplyTree(replies, rootId), [replies, rootId])
+  const cw = useContentWarning(post)
 
   if (!open) return null
 
-  const title = post?.title || post?.name || post?.textPreview || t('post.untitled', { defaultValue: 'Post' })
+  const plainTitle = post?.title || post?.name || post?.textPreview || t('post.untitled', { defaultValue: 'Post' })
+  // Don't spell out a warned post's title or text in the header.
+  const title = cw.mode !== 'show' ? `Content warning: ${cw.label}` : plainTitle
   const author = post?.actor ?? {}
   const postUrl = post?.id ? `/posts/${encodeURIComponent(post.id)}` : null
 
@@ -234,6 +238,7 @@ export default function ReplyModal({ post, open, onClose, onReplied }) {
                         <ReplyComposer
                           postId={post?.id}
                           inReplyTo={reply.id}
+                          parent={reply.contentWarning ? reply : post}
                           canReply={post?.canReply}
                           autoFocus
                           compact
@@ -260,6 +265,7 @@ export default function ReplyModal({ post, open, onClose, onReplied }) {
         <div className="shrink-0 px-5 pb-4 pt-4 border-t-2 border-base-300 bg-base-100">
           <ReplyComposer
             postId={post?.id}
+            parent={post}
             canReply={post?.canReply}
             onSubmitted={handleSubmitted}
           />

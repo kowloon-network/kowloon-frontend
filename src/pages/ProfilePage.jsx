@@ -791,12 +791,15 @@ export default function ProfilePage() {
     const prev = prefsRef.current
     let nextPrefs
     let payload
-    if (key.startsWith('notifications.')) {
-      // The Update handler replaces prefs.notifications wholesale — send it whole.
-      const sub = key.slice('notifications.'.length)
-      const nextNotifs = { ...(prev.notifications || {}), [sub]: value }
-      nextPrefs = { ...prev, notifications: nextNotifs }
-      payload = { notifications: nextNotifs }
+    const dot = key.indexOf('.')
+    if (dot > 0) {
+      // Nested prefs (notifications.*, contentWarnings.*): send the whole
+      // nested object, since the Update handler may replace it wholesale.
+      const head = key.slice(0, dot)
+      const sub = key.slice(dot + 1)
+      const nextNested = { ...(prev[head] || {}), [sub]: value }
+      nextPrefs = { ...prev, [head]: nextNested }
+      payload = { [head]: nextNested }
     } else {
       nextPrefs = { ...prev, [key]: value }
       payload = { [key]: value }

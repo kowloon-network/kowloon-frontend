@@ -15,6 +15,7 @@ import { Bookmark as BookmarkIcon, ExternalLink, Globe, Newspaper, Users } from 
 import CircleIcon from '../ui/CircleIcon'
 import CopyCircleMenu from '../circles/CopyCircleMenu'
 import sizedUrl from '../../lib/sizedUrl'
+import { useCompactWarning } from '../../hooks/useContentWarning'
 
 const CARD_W = 'w-60'   // 240px — circles/groups/links/servers
 const POST_W = 'w-72'   // 288px — posts
@@ -73,10 +74,12 @@ function tokens(onDark) {
 }
 
 function PostCard({ item, baseUrl, onDark }) {
-  const img = resolveUrl(item.featuredImage, baseUrl)
+  // Content warning: no picture, and the warning instead of the post's words.
+  const cw = useCompactWarning(item)
+  const img = cw.hideImage ? null : resolveUrl(item.featuredImage, baseUrl)
   const author = item.actor || {}
   const authorIcon = resolveUrl(author.icon, baseUrl)
-  const text = item.title || item.summary || item.preview || ''
+  const text = cw.text || item.title || item.summary || item.preview || ''
   if (img) {
     return (
       <Link to={`/posts/${encodeURIComponent(item.id)}`} className={`${POST_W} shrink-0 block bg-base-300 overflow-hidden`}>

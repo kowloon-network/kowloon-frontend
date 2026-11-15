@@ -179,6 +179,7 @@ export default function PostPage() {
                         <ReplyComposer
                           postId={rootId}
                           inReplyTo={reply.id}
+                          parent={reply.contentWarning ? reply : post}
                           canReply={post.canReply}
                           autoFocus
                           compact
@@ -209,6 +210,7 @@ export default function PostPage() {
 
         <ReplyComposer
           postId={id}
+          parent={post}
           canReply={post.canReply}
           autoFocus={shouldFocusReply}
           onSubmitted={handleReplySubmitted}

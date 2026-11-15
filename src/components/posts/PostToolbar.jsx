@@ -11,7 +11,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faComment, faBookmark, faShareNodes } from '@fortawesome/free-solid-svg-icons'
 import {
   MoreHorizontal, Flag, Ban, BellOff, Link as LinkIcon,
-  Copy, ExternalLink, Pencil, Trash2, Compass,
+  Copy, ExternalLink, Pencil, Trash2, Compass, AlertTriangle,
 } from 'lucide-react'
 import PostComposer from './PostComposer'
 import ReactButton from './ReactButton'
@@ -21,6 +21,7 @@ import AddToDiscoveryModal from '../discover/AddToDiscoveryModal'
 import { useClient } from '../../hooks/useClient'
 import { toast } from '../../app/toast'
 import ReportDialog from '../ui/ReportDialog'
+import ContentWarningDialog from '../ui/ContentWarningDialog'
 
 // ── Share helpers ────────────────────────────────────────────────────────────
 
@@ -222,6 +223,7 @@ function PostMoreMenu({ post, t, user, onDeleted }) {
   const [anchorRect, setAnchorRect] = useState(null)
   const [discoveryOpen, setDiscoveryOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
+  const [cwOpen, setCwOpen] = useState(false)
 
   const triggerRef = useRef(null)
   const popoverRef = useRef(null)
@@ -369,6 +371,15 @@ function PostMoreMenu({ post, t, user, onDeleted }) {
       label: t('discovery.addTitle', { defaultValue: 'Add to Discovery' }),
       onClick: () => { setOpen(false); setDiscoveryOpen(true) },
     })
+    // Moderators and admins can put a content warning on anyone's post.
+    if (!isOwner) {
+      items.push({
+        key: 'contentwarning',
+        Icon: AlertTriangle,
+        label: t('post.contentWarningStaff', { defaultValue: 'Content warning...' }),
+        onClick: () => { setOpen(false); setCwOpen(true) },
+      })
+    }
   }
 
   // Nothing actionable — don't render the trigger.
@@ -426,6 +437,21 @@ function PostMoreMenu({ post, t, user, onDeleted }) {
         targetId={post.id}
         noun="post"
       />
+
+      {isAdmin && !isOwner && (
+        <ContentWarningDialog
+          open={cwOpen}
+          onClose={() => setCwOpen(false)}
+          initial={{ contentWarning: post?.contentWarning, sensitive: post?.sensitive }}
+          allowRemove={!!(post?.contentWarning || post?.sensitive)}
+          onSave={async ({ contentWarning, sensitive }) => {
+            await client.admin.setContentWarning({ target: post.id, contentWarning, sensitive })
+            toast.success(contentWarning || sensitive
+              ? t('post.contentWarningSaved', { defaultValue: 'Content warning saved. The author has been told.' })
+              : t('post.contentWarningRemoved', { defaultValue: 'Content warning removed' }))
+          }}
+        />
+      )}
 
       {isAdmin && (
         <AddToDiscoveryModal

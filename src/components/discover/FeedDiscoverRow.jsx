@@ -11,6 +11,7 @@ import { ChevronRight, Newspaper, Users, Globe, Bookmark as BookmarkIcon, FileTe
 import { useClient } from '../../hooks/useClient'
 import CircleIcon from '../ui/CircleIcon'
 import sizedUrl from '../../lib/sizedUrl'
+import { useCompactWarning } from '../../hooks/useContentWarning'
 
 const SQUARE = 168
 const MAX = 18
@@ -34,6 +35,14 @@ function HexAvatar({ url, type, size = 40 }) {
 const squareCls = 'shrink-0 overflow-hidden bg-base-100 border border-base-300 hover:border-primary transition-colors'
 const sq = { width: SQUARE, height: SQUARE }
 
+// A post. Behind a content warning (or with sensitive media) it drops the
+// picture and shows the warning instead of its words.
+function PostSquare({ item }) {
+  const cw = useCompactWarning(item)
+  const img = cw.hideImage ? null : (item.featuredImage || item.mediaImage)
+  return img ? <PostImageCard item={item} img={img} /> : <PostTextCard item={item} warning={cw.text} />
+}
+
 // A media/featured-image post: image fills the square, author overlaid on a scrim.
 function PostImageCard({ item, img }) {
   const author = item.actor || {}
@@ -56,9 +65,9 @@ function PostImageCard({ item, img }) {
 }
 
 // A text post: type label, as much preview as fits, author at the foot.
-function PostTextCard({ item }) {
+function PostTextCard({ item, warning }) {
   const author = item.actor || {}
-  const text = item.title || item.summary || item.preview || ''
+  const text = warning || item.title || item.summary || item.preview || ''
   return (
     <Link to={`/posts/${encodeURIComponent(item.id)}`} className={`${squareCls} flex flex-col p-3`} style={sq}>
       <div className="flex items-center gap-1.5 mb-1.5">
@@ -111,10 +120,7 @@ function LinkySquare({ item, to, href, Icon }) {
 
 function SquareCard({ item }) {
   switch (item.refType) {
-    case 'Post': {
-      const img = item.featuredImage || item.mediaImage
-      return img ? <PostImageCard item={item} img={img} /> : <PostTextCard item={item} />
-    }
+    case 'Post': return <PostSquare item={item} />
     case 'Circle': return <EntityCard item={item} to={`/circles/${encodeURIComponent(item.id)}`} type="circle" />
     case 'Group':  return <EntityCard item={item} to={`/groups/${encodeURIComponent(item.id)}`} type="group" />
     case 'Page':   return <LinkySquare item={item} to={`/pages/${encodeURIComponent(item.id)}`} Icon={FileText} />

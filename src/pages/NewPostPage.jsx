@@ -17,6 +17,7 @@ import { useClient } from '../hooks/useClient'
 import PostTypeSelector from '../components/posts/PostTypeSelector'
 import RichTextEditor from '../components/posts/LazyRichTextEditor'
 import LocationField from '../components/posts/LocationField'
+import { ContentWarningPicker } from '../components/posts/ContentWarning'
 import CircleSelector from '../components/circles/CircleSelector'
 import { useJoinedGroups } from '../hooks/useJoinedGroups'
 
@@ -251,6 +252,8 @@ export default function NewPostPage() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate]     = useState('')
   const [location, setLocation]   = useState('')
+  const [contentWarning, setContentWarning] = useState(null) // { categories, note }
+  const [sensitive, setSensitive] = useState(false)          // blur photos and video
   const [geo, setGeo]             = useState(null)
   const [tags, setTags]           = useState([])
   const [audience, setAudience]   = useState(prefAudienceToWeb(user?.prefs?.defaultTo))
@@ -494,6 +497,8 @@ export default function NewPostPage() {
         canReact,
         attachments: uploadedAttachments,
         featuredImage: uploadedFeaturedImage,
+        contentWarning: contentWarning || undefined,
+        sensitive: sensitive || undefined,
         dedupeKey: dedupeRef.current.key,
       })
       const postId = res?.result?.id ?? res?.createdId
@@ -738,6 +743,15 @@ export default function NewPostPage() {
             variant="page"
           />
         </Field>
+
+        {/* Content warning */}
+        <ContentWarningPicker
+          value={contentWarning}
+          onChange={setContentWarning}
+          sensitive={sensitive}
+          onSensitiveChange={setSensitive}
+          hasMedia={attachments.length > 0 || !!artFeaturedFile || !!featuredImage}
+        />
 
         {/* Advanced — who can reply / react. Seeded from the audience below. */}
         <ReplyReactScope

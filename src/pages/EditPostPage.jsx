@@ -10,6 +10,7 @@ import { useClient } from '../hooks/useClient'
 import PostTypeSelector from '../components/posts/PostTypeSelector'
 import RichTextEditor from '../components/posts/LazyRichTextEditor'
 import LocationField from '../components/posts/LocationField'
+import { ContentWarningPicker } from '../components/posts/ContentWarning'
 import CircleSelector from '../components/circles/CircleSelector'
 import { useJoinedGroups } from '../hooks/useJoinedGroups'
 import Spinner from '../components/ui/Spinner'
@@ -188,6 +189,10 @@ export default function EditPostPage() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate]     = useState('')
   const [location, setLocation]   = useState('')
+  const [contentWarning, setContentWarning] = useState(null) // { categories, note }
+  const [sensitive, setSensitive] = useState(false)          // blur photos and video
+  // A warning a moderator added is shown locked; only staff can change it.
+  const [cwLocked, setCwLocked]   = useState(false)
   const [geo, setGeo]             = useState(null)
   const [tags, setTags]           = useState([])
   const [audience, setAudience]   = useState('@public')
@@ -230,6 +235,9 @@ export default function EditPostPage() {
       setLocation(post.location?.name ?? '')
       setGeo(post.location?.lat != null ? { lat: post.location.lat, lon: post.location.lon } : null)
       setTags(Array.isArray(post.tags) ? post.tags : [])
+      setContentWarning(post.contentWarning ?? null)
+      setSensitive(!!post.sensitive)
+      setCwLocked(!!post.contentWarning?.addedBy)
       setAudience(post.to ?? '@public')
       // Reply/react default to the post audience when they were left to inherit.
       setCanReply(post.canReply ?? post.to ?? '@public')
@@ -391,6 +399,8 @@ export default function EditPostPage() {
     setUploadErrors({})
     try {
       const updates = {
+        // Only send the warning when it's the author's own to change.
+        ...(cwLocked ? {} : { contentWarning: contentWarning ?? null, sensitive }),
         type: postType,
         title: title || undefined,
         content: content || undefined,
@@ -668,6 +678,16 @@ export default function EditPostPage() {
             variant="page"
           />
         </Field>
+
+        {/* Content warning */}
+        <ContentWarningPicker
+          value={contentWarning}
+          onChange={setContentWarning}
+          sensitive={sensitive}
+          onSensitiveChange={setSensitive}
+          hasMedia={attachments.length > 0 || !!featuredImage}
+          locked={cwLocked}
+        />
 
         {/* Advanced — who can reply / react. Seeded from the post's audience. */}
         <ReplyReactScope

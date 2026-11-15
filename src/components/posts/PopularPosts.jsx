@@ -11,6 +11,8 @@ import stripHtml from '../../lib/stripHtml'
 import sizedUrl from '../../lib/sizedUrl'
 import PostTypeIcon from '../ui/PostTypeIcon'
 import { useClient } from '../../hooks/useClient'
+import { useSelector } from 'react-redux'
+import { getContentWarningDecision } from '@kowloon/client'
 
 const MEDIA_COLOR = POST_TYPES['Media']?.color ?? '#009084'
 
@@ -48,6 +50,7 @@ export default function PopularPosts() {
   const { t } = useTranslation()
   const client = useClient()
   const [posts, setPosts] = useState([])
+  const user = useSelector((state) => state.auth.user)
 
   useEffect(() => {
     if (!client) return
@@ -74,7 +77,10 @@ export default function PopularPosts() {
       <ul className="flex flex-col gap-0">
         {posts.map((post) => {
           const typeColor = POST_TYPES[post.type]?.color
-          const showThumb = post.type === 'Media'
+          // Content warning: name the warning instead of the post's words or picture.
+          const cw = getContentWarningDecision(post, { prefs: user?.prefs, viewerId: user?.id })
+          const cwText = cw.mode === 'hide' ? cw.hiddenLabel : cw.mode === 'warn' ? `Content warning: ${cw.label}` : null
+          const showThumb = post.type === 'Media' && !cwText && !cw.blurMedia
           const author = post.actor
 
           return (
@@ -91,13 +97,13 @@ export default function PopularPosts() {
                   />
                   <div className="flex items-start gap-2 flex-1 min-w-0">
                     <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                      {post.name && (
+                      {post.name && !cwText && (
                         <span className="font-display text-xl leading-tight tracking-wide">
                           {post.name}
                         </span>
                       )}
                       <p className={`font-reading text-base-content/75 leading-snug line-clamp-2 ${post.name ? 'text-sm' : 'text-base'}`}>
-                        {post.textPreview ?? stripHtml(post.summary)}
+                        {cwText ?? post.textPreview ?? stripHtml(post.summary)}
                       </p>
                     </div>
                     {showThumb && <MediaThumb post={post} />}
