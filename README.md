@@ -1,21 +1,50 @@
-# React + Vite
+# Kowloon web frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The web app for [Kowloon](https://kowloon.network), a small, open-source social network made of independent communities. It's what members see in a browser: the feed, the composer, circles, groups, profiles, and the admin panel.
 
-Currently, two official plugins are available:
+It's a React app built with Vite. It talks to a Kowloon server only through [`@kowloon/client`](https://github.com/kowloon-network/kowloon-client).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+**Documentation: <https://kowloon.network/docs/>**
 
-## React Compiler
+## Running Kowloon
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+You don't need this repository to run a server. The server's Docker image already includes a built copy of this frontend; see [Installing Kowloon](https://kowloon.network/docs/admin/install/).
 
-## Expanding the ESLint configuration
+## Developing
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+This repository expects two sibling checkouts beside it, because it installs them from `../client` and `../design`:
 
-## License
+```
+kowloon/
+  client/     https://github.com/kowloon-network/kowloon-client
+  design/     https://github.com/kowloon-network/kowloon-design
+  frontend/   this repository
+```
+
+You also need Node.js 22 and a Kowloon server to talk to -- a local one (see the [server README](https://github.com/kowloon-network/kowloon#developing)) or one you have an account on.
+
+```bash
+npm install
+cp .env.example .env.local
+```
+
+In `.env.local`, set `VITE_SERVER_URL` to your server, for example `http://localhost:3000`. Left blank, the sign-in page asks which server to use.
+
+```bash
+npm run dev       # development server on http://localhost:5173
+npm run build     # production build in dist/
+npm run lint
+```
+
+`npm run dev` and `npm run build` first generate the theme colours from the shared palette in `../design`.
+
+A server running with `NODE_ENV=production` refuses browser requests from `localhost:5173` unless you add that address to its `CORS_ORIGIN` setting.
+
+## Contributing
+
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before you start, and follow the [Code of Conduct](CODE_OF_CONDUCT.md). To report a security problem, see [SECURITY.md](SECURITY.md) -- please don't open a public issue.
+
+## Licence
 
 Licensed under the [Apache License, Version 2.0](LICENSE).
 
