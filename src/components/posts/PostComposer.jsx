@@ -24,6 +24,8 @@ import { useJoinedGroups } from '../../hooks/useJoinedGroups'
 import LocationField from './LocationField'
 import { ContentWarningPicker } from './ContentWarning'
 import AudioPlayer from '../ui/AudioPlayer'
+import FocusPicker from './FocusPicker'
+import { HeaderImage } from './PostImages'
 import { ChevronDown, ChevronRight, Plus, X, Check, Image as ImageIcon } from 'lucide-react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faImage, faVideo, faMusic, faGripVertical } from '@fortawesome/free-solid-svg-icons'
@@ -234,18 +236,26 @@ function DateTimeField({ dateValue, timeValue, onDateChange, onTimeChange, place
 
 // ── Attachment row (Media type) ────────────────────────────────────────────
 
-function AttachmentPreview({ att, uploadProgress }) {
+function AttachmentPreview({ att, uploadProgress, onToggleFocus }) {
   const mt = att.file.type
   if (mt.startsWith('image/')) {
+    // Clicking the thumbnail opens the focus-point picker below the row.
+    // The thumbnail itself is cropped around the chosen point.
     return (
-      <div className="relative shrink-0">
+      <button
+        type="button"
+        onClick={onToggleFocus}
+        aria-label="Set this photo's focus point"
+        className="relative shrink-0 p-0 cursor-pointer"
+      >
         <img
           src={att.previewUrl}
           alt=""
-          className="w-20 h-20 object-cover bg-base-300"
+          className="block w-20 h-20 object-cover bg-base-300"
+          style={att.focus ? { objectPosition: `${att.focus.x * 100}% ${att.focus.y * 100}%` } : undefined}
         />
         <UploadProgressBar percent={uploadProgress} />
-      </div>
+      </button>
     )
   }
   if (mt.startsWith('video/')) {
@@ -307,8 +317,14 @@ function SortableAttachmentRow(props) {
 function AttachmentRow({ att, index, onUpdate, onRemove, dragHandleProps = {}, uploadError, uploadProgress }) {
   const { t } = useTranslation()
   const isAudio = att.file.type.startsWith('audio/')
+  const isImage = att.file.type.startsWith('image/')
+  // Focus-point picker, shown inline under the row (not a popover, so it
+  // stays inside the composer's scroll area and focus trap).
+  const [focusOpen, setFocusOpen] = useState(false)
+  const toggleFocus = () => setFocusOpen((v) => !v)
   return (
-    <div className={`flex gap-3 items-start py-4 border-b border-base-300 bg-base-100 ${isAudio ? 'flex-col' : ''} ${uploadError ? 'bg-error/5' : ''}`}>
+    <div className={`border-b border-base-300 bg-base-100 ${uploadError ? 'bg-error/5' : ''}`}>
+    <div className={`flex gap-3 items-start py-4 ${isAudio ? 'flex-col' : ''}`}>
       {/* Drag handle */}
       <button
         type="button"
@@ -319,7 +335,7 @@ function AttachmentRow({ att, index, onUpdate, onRemove, dragHandleProps = {}, u
       >
         <FontAwesomeIcon icon={faGripVertical} />
       </button>
-      {!isAudio && <AttachmentPreview att={att} uploadProgress={uploadProgress} />}
+      {!isAudio && <AttachmentPreview att={att} uploadProgress={uploadProgress} onToggleFocus={toggleFocus} />}
       <div className="flex flex-col gap-2.5 flex-1 min-w-0">
         {isAudio && <AttachmentPreview att={att} uploadProgress={uploadProgress} />}
         <input
@@ -338,6 +354,16 @@ function AttachmentRow({ att, index, onUpdate, onRemove, dragHandleProps = {}, u
           aria-label={t('composer.attachmentAltLabel')}
           className="bg-transparent font-reading text-sm text-base-content/80 placeholder:text-base-content/40 outline-none"
         />
+        {isImage && (
+          <button
+            type="button"
+            onClick={toggleFocus}
+            aria-expanded={focusOpen}
+            className="self-start font-ui text-xs uppercase tracking-widest text-primary hover:opacity-80"
+          >
+            {focusOpen ? 'Done' : att.focus ? 'Adjust focus point' : 'Set focus point'}
+          </button>
+        )}
       </div>
       <div className="flex flex-col gap-2 items-end shrink-0 pt-0.5 pr-4">
         {uploadError && (
@@ -351,6 +377,12 @@ function AttachmentRow({ att, index, onUpdate, onRemove, dragHandleProps = {}, u
           {t('composer.attachmentRemove')}
         </button>
       </div>
+    </div>
+    {isImage && focusOpen && (
+      <div className="pb-4 pl-10 pr-4">
+        <FocusPicker uri={att.previewUrl} focus={att.focus || null} onChange={(focus) => onUpdate(index, 'focus', focus)} />
+      </div>
+    )}
     </div>
   )
 }
@@ -398,6 +430,8 @@ export default function PostComposer({
   const [featuredImage, setFeaturedImage] = useState(initialValues.featuredImage ?? null) // URL or file ID from link/article preview
   const [artFeaturedFile, setArtFeaturedFile]       = useState(null)    // File for Article featured image
   const [artFeaturedPreview, setArtFeaturedPreview] = useState(null)    // object URL preview
+  const [artFeaturedFocus, setArtFeaturedFocus]     = useState(null)    // { x, y } or null (server detects)
+  const [artFocusOpen, setArtFocusOpen]             = useState(false)   // header focus picker shown
   const [uploadErrors, setUploadErrors] = useState({}) // previewUrl → error string
   const [uploadProgress, setUploadProgress] = useState({}) // previewUrl → percent (#69)
   const [target, setTarget]           = useState(initialValues.target ?? null) // ID of post being shared
@@ -768,6 +802,8 @@ export default function PostComposer({
     setFeaturedImage(null)
     if (artFeaturedPreview) { URL.revokeObjectURL(artFeaturedPreview); setArtFeaturedPreview(null) }
     setArtFeaturedFile(null)
+    setArtFeaturedFocus(null)
+    setArtFocusOpen(false)
     setUploadErrors({})
     setUploadProgress({})
     setTarget(null)
@@ -898,6 +934,7 @@ export default function PostComposer({
     if (artFeaturedPreview) URL.revokeObjectURL(artFeaturedPreview)
     setArtFeaturedFile(file)
     setArtFeaturedPreview(URL.createObjectURL(file))
+    setArtFeaturedFocus(null)
     e.target.value = ''
   }
 
@@ -916,6 +953,7 @@ export default function PostComposer({
           // "IMG_4213" as their caption, and it reads as a UI mistake.
           title: '',
           alt: '',
+          focus: null, // { x, y } once the poster picks one; else the server detects it
           previewUrl: URL.createObjectURL(f),
         })),
       ])
@@ -978,6 +1016,7 @@ export default function PostComposer({
           filename: artFeaturedFile.name,
           contentType: artFeaturedFile.type,
           to: audience,
+          focus: artFeaturedFocus || undefined,
         })
         if (res?.file?.id) uploadedFeaturedImage = res.file.id
       }
@@ -993,6 +1032,7 @@ export default function PostComposer({
               title: att.title || undefined,
               summary: att.alt || undefined,
               to: audience,
+              focus: att.file.type.startsWith('image/') ? att.focus || undefined : undefined,
               onProgress: ({ percent }) =>
                 setUploadProgress((prev) => ({ ...prev, [att.previewUrl]: percent })),
             })
@@ -1012,6 +1052,9 @@ export default function PostComposer({
           fileId: r.value.file.id,
           title: attachments[i].title || undefined,
           alt: attachments[i].alt || undefined,
+          // Also sent here so a focus changed after a failed post still lands
+          // on the attachment (matches the app).
+          focus: attachments[i].file.type.startsWith('image/') ? attachments[i].focus || undefined : undefined,
         }))
       }
 
@@ -1389,15 +1432,40 @@ export default function PostComposer({
           {(postType === 'Article' || postType === 'Event') && artFeaturedPreview && (
             <div className="border-b border-base-300">
               <div className="relative">
-                <img src={artFeaturedPreview} alt="" className="w-full max-h-48 object-cover" />
+                {/* Shown at its header shape, cropped around the focus
+                    point; click to set that point. */}
                 <button
                   type="button"
-                  onClick={() => { URL.revokeObjectURL(artFeaturedPreview); setArtFeaturedPreview(null); setArtFeaturedFile(null) }}
+                  onClick={() => setArtFocusOpen((v) => !v)}
+                  aria-label="Set the header image's focus point"
+                  aria-expanded={artFocusOpen}
+                  className="block w-full p-0 cursor-pointer"
+                >
+                  <HeaderImage uri={artFeaturedPreview} info={{ focus: artFeaturedFocus }} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { URL.revokeObjectURL(artFeaturedPreview); setArtFeaturedPreview(null); setArtFeaturedFile(null); setArtFeaturedFocus(null); setArtFocusOpen(false) }}
                   aria-label={t('composer.removeFeaturedImage', { defaultValue: 'Remove image' })}
                   className="absolute top-1.5 right-1.5 flex items-center justify-center w-6 h-6 rounded-full bg-black/65 text-white hover:bg-black/80 transition-colors"
                 >
                   <X size={14} strokeWidth={2.5} />
                 </button>
+              </div>
+              <div className="px-4 py-2.5">
+                <button
+                  type="button"
+                  onClick={() => setArtFocusOpen((v) => !v)}
+                  aria-expanded={artFocusOpen}
+                  className="font-ui text-xs uppercase tracking-widest text-primary hover:opacity-80"
+                >
+                  {artFocusOpen ? 'Done' : artFeaturedFocus ? 'Adjust focus point' : 'Set focus point'}
+                </button>
+                {artFocusOpen && (
+                  <div className="pt-3 pb-1.5">
+                    <FocusPicker uri={artFeaturedPreview} focus={artFeaturedFocus} onChange={setArtFeaturedFocus} />
+                  </div>
+                )}
               </div>
             </div>
           )}

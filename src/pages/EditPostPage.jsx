@@ -15,6 +15,8 @@ import CircleSelector from '../components/circles/CircleSelector'
 import { useJoinedGroups } from '../hooks/useJoinedGroups'
 import Spinner from '../components/ui/Spinner'
 import ErrorState from '../components/ui/ErrorState'
+import FocusPicker from '../components/posts/FocusPicker'
+import { HeaderImage } from '../components/posts/PostImages'
 
 const NOTE_MAX_WORDS = 500
 const NOTE_MAX_CHARS = 5000
@@ -256,6 +258,7 @@ export default function EditPostPage() {
               previewUrl: a.url,
               name: a.name ?? '',
               mediaType: a.mediaType ?? '',
+              focus: a.focus ?? null,
             }))
         )
       }
@@ -266,6 +269,8 @@ export default function EditPostPage() {
         const isFileId = typeof post.image === 'string' && post.image.startsWith('file:')
         setFeaturedImage({
           existing: true,
+          // Size + focus, so the preview shows the header's real crop.
+          info: post.featuredImageInfo ?? null,
           fileId: isFileId ? post.image : null,
           url:
             post.featuredImage ||
@@ -320,6 +325,7 @@ export default function EditPostPage() {
           file: f,
           name: f.name,
           mediaType: f.type,
+          focus: null, // { x, y } once the poster picks one; else the server detects it
           previewUrl: URL.createObjectURL(f),
         })),
       ])
@@ -327,7 +333,16 @@ export default function EditPostPage() {
     e.target.value = ''
   }
 
+  // Index of the image whose focus-point picker is open, or null.
+  const [focusIndex, setFocusIndex] = useState(null)
+  const toggleFocus = (i) => setFocusIndex((cur) => (cur === i ? null : i))
+  const setAttachmentFocus = (i, focus) =>
+    setAttachments((prev) => prev.map((a, idx) => (idx === i ? { ...a, focus } : a)))
+  // Focus-point picker for a newly picked header image.
+  const [featuredFocusOpen, setFeaturedFocusOpen] = useState(false)
+
   const removeAttachment = (i) => {
+    setFocusIndex(null)
     setAttachments((prev) => {
       const att = prev[i]
       if (att && !att.existing && att.previewUrl) URL.revokeObjectURL(att.previewUrl)
@@ -345,12 +360,13 @@ export default function EditPostPage() {
     }
     setFeaturedImage((prev) => {
       if (prev && !prev.existing && prev.previewUrl) URL.revokeObjectURL(prev.previewUrl)
-      return { existing: false, file, previewUrl: URL.createObjectURL(file) }
+      return { existing: false, file, focus: null, previewUrl: URL.createObjectURL(file) }
     })
     e.target.value = ''
   }
 
   const removeFeaturedImage = () => {
+    setFeaturedFocusOpen(false)
     setFeaturedImage((prev) => {
       if (prev && !prev.existing && prev.previewUrl) URL.revokeObjectURL(prev.previewUrl)
       return null
@@ -427,6 +443,7 @@ export default function EditPostPage() {
             fresh.map((a) => client.files.upload({
               file: a.file, filename: a.file.name, contentType: a.file.type,
               title: a.name || a.file.name, to: audience,
+              focus: (a.mediaType || '').startsWith('image/') ? a.focus || undefined : undefined,
             }))
           )
           const errors = {}
@@ -435,12 +452,12 @@ export default function EditPostPage() {
           })
           if (Object.keys(errors).length > 0) { setUploadErrors(errors); setSubmitting(false); return }
           uploaded = results
-            .map((r, i) => ({ fileId: r.value?.file?.id, title: fresh[i].name || undefined }))
+            .map((r, i) => ({ fileId: r.value?.file?.id, title: fresh[i].name || undefined, focus: fresh[i].focus || undefined }))
             .filter((x) => x.fileId)
         }
         const kept = attachments
           .filter((a) => a.existing && a.fileId)
-          .map((a) => ({ fileId: a.fileId, title: a.name || undefined }))
+          .map((a) => ({ fileId: a.fileId, title: a.name || undefined, focus: a.focus || undefined }))
         updates.attachments = [...kept, ...uploaded]
       }
 
@@ -455,6 +472,7 @@ export default function EditPostPage() {
           const res = await client.files.upload({
             file: featuredImage.file, filename: featuredImage.file.name,
             contentType: featuredImage.file.type, to: audience,
+            focus: featuredImage.focus || undefined,
           })
           updates.featuredImage = res?.file?.id || ''
         }
@@ -523,7 +541,22 @@ export default function EditPostPage() {
           <Field label={t('composer.featuredImage', { defaultValue: 'Featured image (optional)' })}>
             {featuredImage ? (
               <div className="relative">
-                <img src={featuredImage.url || featuredImage.previewUrl} alt="" className="w-full max-h-48 object-cover" />
+                {/* Shown at its header shape and crop. A newly picked image
+                    can have its focus point set (click it); an existing
+                    one keeps the focus it was uploaded with. */}
+                {featuredImage.existing ? (
+                  <HeaderImage uri={featuredImage.url} info={featuredImage.info} />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setFeaturedFocusOpen((v) => !v)}
+                    aria-label="Set the header image's focus point"
+                    aria-expanded={featuredFocusOpen}
+                    className="block w-full p-0 cursor-pointer"
+                  >
+                    <HeaderImage uri={featuredImage.previewUrl} info={{ focus: featuredImage.focus }} />
+                  </button>
+                )}
                 <div className="absolute top-2 right-2 flex items-center gap-2">
                   <button
                     type="button"
@@ -539,6 +572,27 @@ export default function EditPostPage() {
                     className="px-2 py-1 bg-black/50 text-white font-ui text-xs uppercase tracking-widest hover:bg-black/70 transition-colors"
                   >✕</button>
                 </div>
+                {!featuredImage.existing && (
+                  <div className="pt-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setFeaturedFocusOpen((v) => !v)}
+                      aria-expanded={featuredFocusOpen}
+                      className="font-ui text-xs uppercase tracking-widest text-primary hover:opacity-80"
+                    >
+                      {featuredFocusOpen ? 'Done' : featuredImage.focus ? 'Adjust focus point' : 'Set focus point'}
+                    </button>
+                    {featuredFocusOpen && (
+                      <div className="pt-3">
+                        <FocusPicker
+                          uri={featuredImage.previewUrl}
+                          focus={featuredImage.focus || null}
+                          onChange={(focus) => setFeaturedImage((prev) => (prev ? { ...prev, focus } : prev))}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <button type="button" onClick={() => artImageInputRef.current?.click()}
@@ -560,9 +614,19 @@ export default function EditPostPage() {
                   const isImg = (att.mediaType || '').startsWith('image/')
                   return (
                     <div key={att.previewUrl || att.fileId || i}
-                      className={`flex items-center gap-3 py-3 px-3 border-b border-base-300 last:border-b-0 ${uploadErrors[att.previewUrl] ? 'bg-error/5' : ''}`}>
+                      className={`border-b border-base-300 last:border-b-0 ${uploadErrors[att.previewUrl] ? 'bg-error/5' : ''}`}>
+                    <div className="flex items-center gap-3 py-3 px-3">
                       {isImg
-                        ? <img src={att.previewUrl || att.url} alt="" className="w-16 h-16 object-cover shrink-0 bg-base-200" />
+                        ? (
+                          <button type="button" onClick={() => toggleFocus(i)} aria-label="Set this photo's focus point" className="shrink-0 p-0 cursor-pointer">
+                            <img
+                              src={att.previewUrl || att.url}
+                              alt=""
+                              className="block w-16 h-16 object-cover bg-base-200"
+                              style={att.focus ? { objectPosition: `${att.focus.x * 100}% ${att.focus.y * 100}%` } : undefined}
+                            />
+                          </button>
+                        )
                         : <div className="w-16 h-16 shrink-0 bg-base-200 flex items-center justify-center font-ui text-[10px] uppercase tracking-widest text-base-content/50 text-center px-1">
                             {(att.mediaType || '').split('/')[0] || t('composer.file', { defaultValue: 'File' })}
                           </div>}
@@ -571,11 +635,27 @@ export default function EditPostPage() {
                         {uploadErrors[att.previewUrl] && (
                           <span className="font-ui text-xs uppercase tracking-widest text-error">{uploadErrors[att.previewUrl]}</span>
                         )}
+                        {isImg && (
+                          <button
+                            type="button"
+                            onClick={() => toggleFocus(i)}
+                            aria-expanded={focusIndex === i}
+                            className="self-start mt-1 font-ui text-xs uppercase tracking-widest text-primary hover:opacity-80"
+                          >
+                            {focusIndex === i ? 'Done' : att.focus ? 'Adjust focus point' : 'Set focus point'}
+                          </button>
+                        )}
                       </div>
                       <button type="button" onClick={() => removeAttachment(i)}
                         className="shrink-0 font-ui text-xs uppercase tracking-widest text-base-content/30 hover:text-error transition-colors">
                         {t('composer.attachmentRemove', { defaultValue: 'Remove' })}
                       </button>
+                    </div>
+                    {isImg && focusIndex === i && (
+                      <div className="px-3 pb-3">
+                        <FocusPicker uri={att.previewUrl || att.url} focus={att.focus || null} onChange={(focus) => setAttachmentFocus(i, focus)} />
+                      </div>
+                    )}
                     </div>
                   )
                 })}

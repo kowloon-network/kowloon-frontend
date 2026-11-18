@@ -12,6 +12,7 @@ import PostToolbar from './PostToolbar'
 import VisibilityIcon from '../ui/VisibilityIcon'
 import { POST_TYPES } from '../../lib/postTypes'
 import SafeHtml from '../ui/SafeHtml'
+import { HeaderImage } from './PostImages'
 
 const EVENT_COLOR = POST_TYPES['Event']?.color ?? '#cc272e'
 
@@ -81,7 +82,7 @@ export default function EventCard({ post, showFull = false }) {
       {/* Featured image */}
       {image && (
         <SensitiveMedia blur={cw.blurMedia && !mediaShown} onReveal={() => setMediaShown(true)}>
-          <img loading="lazy" src={image} alt="" className="w-full max-h-64 object-cover" />
+          <HeaderImage uri={image} info={post?.featuredImageInfo} />
         </SensitiveMedia>
       )}
 

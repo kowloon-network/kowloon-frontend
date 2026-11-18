@@ -14,6 +14,8 @@ import UserAvatar from '../ui/UserAvatar'
 import sizedUrl from '../../lib/sizedUrl'
 import SafeHtml from '../ui/SafeHtml'
 import { SensitiveMedia } from './ContentWarning'
+import { ImageRows, HeaderImage } from './PostImages'
+import { toLayoutItem, attachmentKind } from '../../lib/postImageItems'
 import { useContentWarning } from '../../hooks/useContentWarning'
 
 marked.use({ breaks: true, gfm: true })
@@ -123,22 +125,9 @@ function ExpandButton({ onClick }) {
 
 function renderMediaItem(a, { large = false, onOpen = null } = {}) {
   const mt = a?.mediaType ?? ''
-  if (mt.startsWith('image/')) {
-    // Show the image at its native aspect, only cropping when it's awkwardly
-    // tall: object-cover + a max-height cap means landscapes and mild portraits
-    // render whole, and a very tall portrait is capped and cropped (mirrors the
-    // app's imageDisplayRatio 3:4 floor). The lightbox shows the native aspect.
-    return (
-      <img
-        src={a.url}
-        alt={a.alt || a.summary || a.name || ''}
-        onClick={onOpen ?? undefined}
-        className={`w-full object-cover bg-black ${large ? 'max-h-[32rem]' : 'max-h-96'}${onOpen ? ' cursor-zoom-in' : ''}`}
-      />
-    )
-  }
   // Video and audio render their own controls, so the lightbox trigger lives
-  // in a corner button to avoid hijacking play/pause taps.
+  // in a corner button to avoid hijacking play/pause taps. (Images render in
+  // ImageRows -- see PostImages.jsx.)
   if (mt.startsWith('audio/')) {
     return (
       <div className="relative">
@@ -169,91 +158,16 @@ function renderMediaItem(a, { large = false, onOpen = null } = {}) {
   )
 }
 
-function MediaThumb({ attachment, active, onClick }) {
-  const mt = attachment?.mediaType ?? ''
-  const isImage = mt.startsWith('image/')
-  const isVideo = mt.startsWith('video/')
-  const isAudio = mt.startsWith('audio/')
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={attachment.name ?? 'Media'}
-      className={`relative w-full aspect-square overflow-hidden bg-base-300 transition-opacity ${
-        active ? 'ring-2 ring-primary opacity-100' : 'opacity-60 hover:opacity-100'
-      }`}
-    >
-      {isImage && <img loading="lazy" src={sizedUrl(attachment.url, 200)} alt={attachment.alt || attachment.summary || attachment.name || ''} className="w-full h-full object-cover" />}
-      {isVideo && (
-        <>
-          <video src={attachment.url} muted preload="metadata" className="w-full h-full object-cover" />
-          <span className="absolute inset-0 flex items-center justify-center bg-black/30">
-            <Play size={20} className="text-white" />
-          </span>
-        </>
-      )}
-      {isAudio && (
-        <span className="absolute inset-0 flex items-center justify-center">
-          <Music size={22} className="text-base-content/70" />
-        </span>
-      )}
-      {!isImage && !isVideo && !isAudio && (
-        <span className="absolute inset-0 flex items-center justify-center">
-          <FileText size={22} className="text-base-content/70" />
-        </span>
-      )}
-    </button>
-  )
-}
-
-function MediaGallery({ attachments }) {
-  const [activeIdx, setActiveIdx] = useState(0)
-  const [lightboxIdx, setLightboxIdx] = useState(null)
-  if (!attachments?.length) return null
-  const safeActive = Math.min(activeIdx, attachments.length - 1)
-  const active = attachments[safeActive]
-
-  // Lightbox cycles through only the items that make sense to enlarge.
-  const lightboxItems = attachments.filter(isLightboxable)
-
-  const openLightbox = () => {
-    if (!isLightboxable(active)) return
-    const idx = lightboxItems.findIndex((a) => a.url === active.url)
-    setLightboxIdx(idx >= 0 ? idx : 0)
-  }
-  const navigate = (delta) => {
-    setLightboxIdx((i) => (i + delta + lightboxItems.length) % lightboxItems.length)
-  }
-
-  return (
-    <div className="flex flex-col gap-3 mt-3 mb-6">
-      <div>
-        {renderMediaItem(active, { large: true, onOpen: isLightboxable(active) ? openLightbox : null })}
-      </div>
-      {attachments.length > 1 && (
-        <div className="grid gap-2 grid-cols-[repeat(auto-fill,minmax(64px,1fr))]">
-          {attachments.map((a, i) => (
-            <MediaThumb key={i} attachment={a} active={i === safeActive} onClick={() => setActiveIdx(i)} />
-          ))}
-        </div>
-      )}
-      {lightboxIdx !== null && (
-        <MediaLightbox
-          items={lightboxItems}
-          index={lightboxIdx}
-          onClose={() => setLightboxIdx(null)}
-          onNavigate={navigate}
-        />
-      )}
-    </div>
-  )
-}
-
+// Full post page: all of a post's images in rows that keep each image's
+// shape (same rules as the feed card, without its 4-item cap); clicking one
+// opens the lightbox. Video, audio and other files follow with their own
+// players. Mirrors the app's MediaAttachments (mobile PostBody.jsx).
 function Attachments({ attachments = [] }) {
   const [lightboxIdx, setLightboxIdx] = useState(null)
   if (!attachments.length) return null
 
+  const images = attachments.filter((a) => attachmentKind(a) === 'image')
+  const others = attachments.filter((a) => attachmentKind(a) !== 'image')
   const lightboxItems = attachments.filter(isLightboxable)
   const openLightbox = (a) => {
     const idx = lightboxItems.findIndex((x) => x.url === a.url)
@@ -264,10 +178,16 @@ function Attachments({ attachments = [] }) {
   }
 
   return (
-    <div className="flex flex-col gap-2 mt-3">
-      {attachments.map((a, i) => (
-        <div key={i}>
-          {renderMediaItem(a, { onOpen: isLightboxable(a) ? () => openLightbox(a) : null })}
+    <div className="flex flex-col gap-3 mt-3 mb-6">
+      {images.length > 0 && (
+        <ImageRows
+          items={images.map((a) => toLayoutItem(a, 'image'))}
+          cellAction={(i) => ({ onClick: () => openLightbox(images[i]) })}
+        />
+      )}
+      {others.map((a, i) => (
+        <div key={`${a.url}-${i}`}>
+          {renderMediaItem(a, { large: attachmentKind(a) === 'video', onOpen: isLightboxable(a) ? () => openLightbox(a) : null })}
         </div>
       ))}
       {lightboxIdx !== null && (
@@ -282,65 +202,51 @@ function Attachments({ attachments = [] }) {
   )
 }
 
-// Capped feed-card media grid (Card.md decision 2) — up to 4 attachments in
-// a 2x2 grid (1 shown full-width); a 5th+ replaces the last cell with a
-// "+N more" link to the full post. Images, video, and audio share the same
-// cap and cell treatment here — the richer main+thumbnail-strip gallery
-// (MediaGallery) and per-item players (Attachments) are reserved for the
-// full post detail page (showFull), which this doesn't touch.
+// Capped feed-card media grid (Card.md decision 2) -- up to 4 attachments in
+// rows that keep each image's shape, cropped around its focus point
+// (PostImages.jsx); a 5th+ turns the last cell into a "+N more" link to the
+// full post. Video and audio show as tiles here -- full playback lives on
+// the post page.
 function AttachmentGrid({ attachments = [], postUrl }) {
   if (!attachments.length) return null
   const shown = attachments.slice(0, 4)
   const extra = attachments.length - shown.length
-  const cols = shown.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
 
   return (
-    <div className={`grid ${cols} gap-1 mt-3 mb-3`}>
-      {shown.map((a, i) => {
-        const isOverflowCell = i === shown.length - 1 && extra > 0
-        // An odd, uncapped final item spans both columns so the grid's
-        // bottom edge stays flush instead of leaving an empty cell beside
-        // it — matches mobile's existing 2-col grid behavior.
-        const isOddFinal = !isOverflowCell && shown.length > 1 && shown.length % 2 === 1 && i === shown.length - 1
-        const mt = a?.mediaType ?? ''
-        const isImage = mt.startsWith('image/')
-        const isVideo = mt.startsWith('video/')
-        const isAudio = mt.startsWith('audio/')
-        const cell = (
-          <div className={`relative overflow-hidden bg-base-300 ${isOddFinal ? 'col-span-2 aspect-[2/1]' : 'aspect-square'}`}>
-            {isImage && (
-              <img loading="lazy" src={sizedUrl(a.url, 400)} alt={a.alt || a.summary || a.name || ''} className="w-full h-full object-cover" />
-            )}
-            {isVideo && (
-              <>
-                <video src={a.url} muted preload="metadata" className="w-full h-full object-cover" />
-                <span className="absolute inset-0 flex items-center justify-center bg-black/30">
-                  <Play size={24} className="text-white" />
-                </span>
-              </>
-            )}
-            {isAudio && (
-              <span className="absolute inset-0 flex items-center justify-center">
-                <Music size={24} className="text-base-content/70" />
-              </span>
-            )}
-            {!isImage && !isVideo && !isAudio && (
-              <span className="absolute inset-0 flex items-center justify-center">
-                <FileText size={24} className="text-base-content/70" />
-              </span>
-            )}
-            {isOverflowCell && (
-              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                <span className="font-ui text-sm uppercase tracking-widest text-white">+{extra} more</span>
-              </div>
-            )}
+    <ImageRows
+      className="mt-3 mb-3"
+      items={shown.map((a) => toLayoutItem(a))}
+      // Cards load a downsized variant: 400px for cells sharing a row, 800
+      // for an image alone in its row (server falls back to the original
+      // when that size doesn't exist).
+      srcFor={(it, cellCount) => sizedUrl(it.uri, cellCount > 1 ? 400 : 800)}
+      cellAction={() => (postUrl ? { to: postUrl } : null)}
+      renderPlaceholder={(it, onMeasure) => (
+        <>
+          {it.kind === 'video' && (
+            <video
+              src={it.uri}
+              muted
+              preload="metadata"
+              className="w-full h-full object-cover"
+              onLoadedMetadata={onMeasure ? (e) => onMeasure(e.currentTarget.videoWidth, e.currentTarget.videoHeight) : undefined}
+            />
+          )}
+          <span className={`absolute inset-0 flex items-center justify-center ${it.kind === 'video' ? 'bg-black/30' : ''}`}>
+            {it.kind === 'video' && <Play size={24} className="text-white" />}
+            {it.kind === 'audio' && <Music size={24} className="text-base-content/70" />}
+            {it.kind === 'file' && <FileText size={24} className="text-base-content/70" />}
+          </span>
+        </>
+      )}
+      renderOverlay={(i) =>
+        extra > 0 && i === shown.length - 1 ? (
+          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+            <span className="font-ui text-sm uppercase tracking-widest text-white">+{extra} more</span>
           </div>
-        )
-        return postUrl
-          ? <Link key={i} to={postUrl}>{cell}</Link>
-          : <div key={i}>{cell}</div>
-      })}
-    </div>
+        ) : null
+      }
+    />
   )
 }
 
@@ -396,6 +302,9 @@ export default function PostBody({ post, showFull = false }) {
   // Cards get a downsized variant (server falls back to the original if that
   // thumbnail doesn't exist); the full post page and the lightbox get full size.
   const heroDisplaySrc = showFull ? heroSrc : sizedUrl(heroSrc, 600)
+  // Size + focus point of the header image, for its shape and crop
+  // (PostImages.jsx). Only describes featuredImage, not a Link's OG fallback.
+  const heroInfo = heroSrc && heroSrc === post?.featuredImage ? post?.featuredImageInfo : undefined
 
   return (
     <div className="reading-surface font-reading text-base-content leading-relaxed">
@@ -427,32 +336,26 @@ export default function PostBody({ post, showFull = false }) {
       heroSrc && (
         blur ? (
           <SensitiveMedia blur onReveal={reveal} className="mb-6">
-            <img src={heroDisplaySrc} alt="" className="w-full object-cover max-h-64" />
+            <HeaderImage uri={heroSrc} src={heroDisplaySrc} info={heroInfo} />
           </SensitiveMedia>
         ) : isLink && post?.href ? (
           <a
             href={post.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="block mb-6"
+            className="block mb-6 cursor-pointer"
           >
-            <img
-              src={heroDisplaySrc}
-              alt={title ?? ''}
-              loading="lazy"
-              decoding="async"
-              className="w-full object-cover max-h-64 cursor-pointer"
-            />
+            <HeaderImage uri={heroSrc} src={heroDisplaySrc} info={heroInfo} alt={title ?? ''} />
           </a>
         ) : (
           <>
-            <img
+            <HeaderImage
+              uri={heroSrc}
               src={heroDisplaySrc}
+              info={heroInfo}
               alt={title ?? ''}
-              loading="lazy"
-              decoding="async"
               onClick={() => setHeroLightbox(true)}
-              className="w-full object-cover mb-6 cursor-zoom-in max-h-[28rem]"
+              className="mb-6"
             />
             {heroLightbox && (
               <MediaLightbox
@@ -471,7 +374,7 @@ export default function PostBody({ post, showFull = false }) {
       {isMedia && (
         <SensitiveMedia blur={blur} onReveal={reveal}>
           {showFull
-            ? <MediaGallery attachments={post?.attachments ?? []} />
+            ? <Attachments attachments={post?.attachments ?? []} />
             : <AttachmentGrid attachments={post?.attachments ?? []} postUrl={postUrl} />}
         </SensitiveMedia>
       )}
