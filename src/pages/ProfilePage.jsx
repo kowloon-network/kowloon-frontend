@@ -48,10 +48,11 @@ const MOCK_USER = {
 
 // ── Section wrapper ───────────────────────────────────────────────────────────
 
-function Section({ title, children }) {
+function Section({ title, hint, children }) {
   return (
     <section className="flex flex-col gap-4 pb-8 border-b border-base-300 last:border-b-0">
       <h2 className="font-display text-2xl tracking-wide">{title}</h2>
+      {hint ? <p className="font-ui text-sm text-base-content/60 -mt-2">{hint}</p> : null}
       {children}
     </section>
   )
@@ -1191,7 +1192,7 @@ export default function ProfilePage() {
         const entries = PREFS.filter((p) => p.group === group.key)
         if (!entries.length) return null
         return (
-          <Section key={group.key} title={group.label}>
+          <Section key={group.key} title={group.label} hint={group.hint}>
             {entries.map((entry) => (
               <PrefControl
                 key={entry.key}
