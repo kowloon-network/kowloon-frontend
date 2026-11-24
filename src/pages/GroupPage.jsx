@@ -149,7 +149,12 @@ export default function GroupPage() {
   const isOwner       = authUser && group.actor?.id === authUser.id
   const isMember      = joined
   const needsApproval = joinNeedsApproval(group.rsvpPolicy)
-  const canJoin       = canJoinGroup(group.rsvpPolicy)
+  // Groups are server-only for now (the server refuses cross-server joins),
+  // so no Join on another server's group.
+  const groupDomain   = String(group.id || id || '').split('@').pop()
+  const viewerDomain  = String(authUser?.id || '').split('@').pop()
+  const groupIsRemote = !!viewerDomain && !!groupDomain && groupDomain !== viewerDomain
+  const canJoin       = canJoinGroup(group.rsvpPolicy) && !groupIsRemote
 
   const MEMBER_PREVIEW  = 5
   const visibleMembers  = showAllMembers ? members : members.slice(0, MEMBER_PREVIEW)
@@ -295,7 +300,9 @@ export default function GroupPage() {
             )}
             {isLoggedIn && !isOwner && !joined && !canJoin && (
               <span className="font-ui text-xs uppercase tracking-widest text-base-content/40">
-                {t('group.inviteOnly', { defaultValue: 'Invite only' })}
+                {groupIsRemote
+                  ? t('group.otherServerOnly', { defaultValue: 'Only members of {{domain}} can join for now', domain: groupDomain })
+                  : t('group.inviteOnly', { defaultValue: 'Invite only' })}
               </span>
             )}
             {isLoggedIn && !isOwner && (
